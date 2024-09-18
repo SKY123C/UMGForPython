@@ -4,6 +4,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Widgets/SWindow.h"
 #include "TextureCompiler.h"
+#include "ImageUtils.h"
 #include "UMG.h"
 
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >=1
@@ -116,6 +117,13 @@ UTexture2D* UPythonWidgetExtendLib::CreateTexture2DFromRaw(TArray<uint8> RawData
     NewTexture2D->PostEditChange();
     FTextureCompilingManager::Get().FinishCompilation({ NewTexture2D });
     return NewTexture2D;
+}
+UTexture2D* UPythonWidgetExtendLib::CreateTexture2DFromFile(FString FilePath)
+{
+    UTexture2D* Texture2D = nullptr;
+    if (FPaths::FileExists(FilePath))
+        Texture2D = FImageUtils::ImportFileAsTexture2D(FilePath);
+    return Texture2D;
 }
 void UPythonWidgetExtendLib::GetRootWidget(UUserWidget* Widget)
 {
