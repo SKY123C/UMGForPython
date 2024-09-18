@@ -1,7 +1,5 @@
-import PIL.Image
 import unreal
 import pathlib
-import PIL
 from . import shelf_core
 import traceback
 
@@ -10,10 +8,8 @@ def create_button_with_text(text="", tool_tip="", icon_path="", button_type=unre
     layout = unreal.HorizontalBox()
     image = None
     if icon_path and pathlib.Path(icon_path).exists():
-        raw_handle = PIL.Image.open(icon_path)
-        raw_data = [j for i in raw_handle.getdata() for j in i]
         image = unreal.Image()
-        texture = unreal.PythonWidgetExtendLib.create_texture2d_from_raw(raw_data, raw_handle.size[0], raw_handle.size[1], 4)
+        texture = unreal.PythonWidgetExtendLib.create_texture2d_from_file(icon_path)
         image.set_brush_from_texture(texture)
         ...
     if button_type == unreal.CheckBox.static_class():
@@ -241,6 +237,7 @@ class CGTeamWorkWindow:
             shelf_core.SideEntity("动画",icon_path=shelf_core.Utl.get_full_icon_path("animation.png")),
             shelf_core.SideEntity("材质",icon_path=shelf_core.Utl.get_full_icon_path("material.png")),
             shelf_core.SideEntity("定序器",icon_path=shelf_core.Utl.get_full_icon_path("sequence.png")),
+            shelf_core.SideEntity("CGTeamWork",icon_path=shelf_core.Utl.get_full_icon_path("cgteamwork.png")),
             shelf_core.SideEntity("脚本",icon_path=shelf_core.Utl.get_full_icon_path("code.png")),
             shelf_core.SideEntity("通用",icon_path=shelf_core.Utl.get_full_icon_path("utl.png")),
             shelf_core.SideEntity("日志",icon_path=shelf_core.Utl.get_full_icon_path("log.png")),
