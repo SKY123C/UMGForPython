@@ -18,9 +18,6 @@ class UPythonWidgetExtendLib : public UBlueprintFunctionLibrary
 public:
 
 	UFUNCTION(BlueprintCallable)
-	static UTexture2D* CreateTexture2DFromRaw(TArray<uint8> RawData, int32 Width, int32 Height, int32 ChannelNum, bool bUseSRGB = false, int32 TextureFilterValue = -1, bool bBGR = false, bool FlipY = false);
-
-	UFUNCTION(BlueprintCallable)
 	static UTexture2D* CreateTexture2DFromFile(FString FilePath);
 
 	UFUNCTION(BlueprintCallable)
