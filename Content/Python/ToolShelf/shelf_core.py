@@ -84,6 +84,7 @@ class SideEntity:
 class StackWidgetHandle(BaseHandle):
 
     instance = False
+    fill = True
     
     def __init__(self, entity: SideEntity, handle_id=""):
         self.entity = entity
@@ -112,3 +113,84 @@ def create_size_wrapper(widget):
     size_box = unreal.SizeBox()
     size_box.add_child(widget)
     return size_box
+
+def create_size_wrapper(widget):
+    size_box = unreal.SizeBox()
+    size_box.add_child(widget)
+    return size_box
+
+def create_button(text="", icon_path="", size=None):
+    layout = unreal.HorizontalBox()
+    image = None
+    if icon_path and pathlib.Path(icon_path).exists():
+        image = unreal.Image()
+        texture = unreal.PythonWidgetExtendLib.create_texture2d_from_file(icon_path)
+        image.set_brush_from_texture(texture)
+    button = unreal.EditorUtilityButton()
+    if image:
+        size_box = create_size_wrapper(image)
+        size_box.set_width_override(25)
+        size_box.set_height_override(25)
+        slot = layout.add_child_to_horizontal_box(size_box)
+        slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+        slot.set_padding(unreal.Margin(3, 0, 0, 0))
+    button_text = unreal.TextBlock()
+    button_text.font.size = 10
+    button_text.set_text(text)
+    slot = layout.add_child_to_horizontal_box(button_text)
+    slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_RIGHT)
+    slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+    slot.set_padding(unreal.Margin(10, 0, 0, 0))
+    button.set_content(layout)
+    button.set_tool_tip_text(text)
+    return button
+    
+    
+    
+def create_side_button_with_text(text="", tool_tip="", icon_path="", button_type=unreal.Button.static_class(), display=True) -> unreal.Button:
+    layout = unreal.HorizontalBox()
+    image = None
+    if icon_path and pathlib.Path(icon_path).exists():
+        image = unreal.Image()
+        texture = unreal.PythonWidgetExtendLib.create_texture2d_from_file(icon_path)
+        image.set_brush_from_texture(texture)
+        ...
+    if button_type == unreal.CheckBox.static_class():
+        checked_hover_color = unreal.SlateColor(unreal.LinearColor(0, 0.2, 0.7, 1 if display else int(display)))
+        hover_color = unreal.SlateColor(unreal.LinearColor(0, 0.2, 1, 0.8 if display else int(display)))
+        press_color = unreal.SlateColor(unreal.LinearColor(0.05, 0.05, 0.05, 1))
+        button = unreal.EditorUtilityCheckBox()
+        widget_style: unreal.CheckBoxStyle = button.get_editor_property("widget_style")
+        widget_style.check_box_type = unreal.SlateCheckBoxType.TOGGLE_BUTTON
+        widget_style.checked_hovered_image.set_editor_property("resource_name", "")
+        widget_style.checked_image.set_editor_property("resource_name", "")
+        widget_style.checked_pressed_image.set_editor_property("resource_name", "")
+        widget_style.checked_hovered_image.tint_color = press_color if not display else checked_hover_color
+        widget_style.checked_image.tint_color = hover_color
+        widget_style.checked_pressed_image.tint_color = hover_color
+        widget_style.unchecked_pressed_image.tint_color = press_color
+        widget_style.unchecked_hovered_image.tint_color = press_color
+        widget_style.unchecked_hovered_image.draw_as = unreal.SlateBrushDrawType.IMAGE
+    else:
+        button = unreal.EditorUtilityButton()
+    
+    if image:
+        size_box = create_size_wrapper(image)
+        size_box.set_width_override(25)
+        size_box.set_height_override(25)
+        slot = layout.add_child_to_horizontal_box(size_box)
+        slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+        slot.set_padding(unreal.Margin(3, 0, 0, 0))
+    button_text = unreal.TextBlock()
+    button_text.font.size = 10
+    button_text.set_text(text)
+    #size_box = create_size_wrapper(button_text)
+    slot = layout.add_child_to_horizontal_box(button_text)
+    slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_RIGHT)
+    slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+    slot.set_padding(unreal.Margin(10, 0, 0, 0))
+    button.set_content(layout)
+    button.set_tool_tip_text(tool_tip)
+    return button

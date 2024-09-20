@@ -40,54 +40,40 @@ def get_is_debug():
         result = False if os.environ.get("tw_debug") == "False" else True
     return result
 
-def create_animation_task(file_path, dst_path, skeleton_path):
-    if unreal.SystemLibrary.get_engine_version().startswith("5"):
-        asset_system = unreal.get_editor_subsystem(unreal.EditorAssetSubsystem)
-    else:
-        asset_system = unreal.EditorAssetLibrary
-    if not asset_system.does_asset_exist(skeleton_path):
-        print(skeleton_path + ": 骨骼网格体不存在")
-        return
-    skele_obj = unreal.load_asset(skeleton_path)
-    if skele_obj.get_class() == unreal.SkeletalMesh.static_class():
-        skeleton = skele_obj.get_editor_property("skeleton")
-    elif skele_obj.get_class() == unreal.Skeleton.static_class():
-        skeleton = skele_obj
-    else:
-        skeleton = None
-    if not skeleton:
-        print(skeleton_path + ": 骨骼不存在")
-        return
-    import_task = unreal.AssetImportTask()
-    options = unreal.FbxImportUI()
-    import_task.replace_existing = True
-    import_task.options = options
-    import_task.save = True
-    import_task.automated = True
-    import_task.filename = file_path
-    import_task.destination_path = dst_path
-    '''
-    FbxImportUI配置
-    '''
-    options.import_animations = True
-    options.import_materials = False
-    options.import_textures = False
-    options.skeleton = skeleton
-    options.anim_sequence_import_data.import_translation = unreal.Vector(0.0, 0.0, 0.0)
-    options.anim_sequence_import_data.import_rotation = unreal.Rotator(0.0, 0.0, 0.0)
-    options.anim_sequence_import_data.import_uniform_scale = 1.0
-    # FbxAnimSequenceImportData
-    options.anim_sequence_import_data.set_editor_property('animation_length', unreal.FBXAnimationLengthImportType.FBXALIT_EXPORTED_TIME)
-    options.anim_sequence_import_data.set_editor_property('remove_redundant_keys', True)
-
-    return import_task
-
-def batch_import_animation(cls, file_list, dst_path, skeleton):
-    task_list = []
-    for i in file_list:
-        task_list.append(create_animation_task(i, dst_path, skeleton))
-    if task_list:asset_tools.import_asset_tasks(task_list)
-
-
-def create_logger(logger_name):
-    ...
+class CustomLogger:
+    def __init__(self, name, out_object=None) -> None:
+        self._logger = logging.getLogger(name)
+        if self._logger.hasHandlers():
+            for i in self._logger.handlers:
+                self._logger.removeHandler(i)
+        logger_handle = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s-%(name)s-%(filename)s-[line:%(lineno)d]'
+                                        '-%(levelname)s-[日志信息]: %(message)s',
+                                        datefmt='%d-%m-%Y')
+        self.log_str = ""
+        self.warning_str= ""
+        logger_handle.setFormatter(formatter)
+        logger_handle.setStream(self)
+        self._logger.addHandler(logger_handle)
+        self.out_object = out_object
+    
+    @property
+    def logger(self):
+        return self._logger
+    
+    def write(self, text, *args, **kwargs):
+        log_type = None
+        if "-WARNING-" in text:
+            ...
+            self.warning_str += text + "\n"
+            log_type = logging.WARNING
+        elif "-ERROR-" in text:
+            self.log_str += text + "\n"
+            log_type = logging.ERROR
+        
+        if self.out_object:
+            self.out_object.write(log_type, text)
+    
+def create_logger(name, out_object=None):
+    logger = CustomLogger(name, out_object)
+    return logger.logger

@@ -10,7 +10,8 @@ def main():
 
     entry = unreal.ToolMenuEntry(type=unreal.MultiBlockType.TOOL_BAR_BUTTON)
     entry.set_label(label)
-    entry.set_icon('EditorStyle', 'DebugConsole.Icon')
+    entry.set_icon('UMGForPythonStyleSet', 'UMGForPython.Icon')
+    entry.set_tool_tip("UMGForPython Gallery")
     entry.set_string_command(
         type=unreal.ToolMenuStringCommandType.PYTHON,
         custom_type=unreal.Name(''),

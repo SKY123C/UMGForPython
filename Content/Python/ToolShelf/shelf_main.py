@@ -1,60 +1,6 @@
 import unreal
-import pathlib
 from . import shelf_core
 import traceback
-
-
-def create_button_with_text(text="", tool_tip="", icon_path="", button_type=unreal.Button.static_class(), display=True) -> unreal.Button:
-    layout = unreal.HorizontalBox()
-    image = None
-    if icon_path and pathlib.Path(icon_path).exists():
-        image = unreal.Image()
-        texture = unreal.PythonWidgetExtendLib.create_texture2d_from_file(icon_path)
-        image.set_brush_from_texture(texture)
-        ...
-    if button_type == unreal.CheckBox.static_class():
-        checked_hover_color = unreal.SlateColor(unreal.LinearColor(0, 0.2, 0.7, 1 if display else int(display)))
-        hover_color = unreal.SlateColor(unreal.LinearColor(0, 0.2, 1, 0.8 if display else int(display)))
-        press_color = unreal.SlateColor(unreal.LinearColor(0.05, 0.05, 0.05, 1))
-        button = unreal.EditorUtilityCheckBox()
-        widget_style: unreal.CheckBoxStyle = button.get_editor_property("widget_style")
-        widget_style.check_box_type = unreal.SlateCheckBoxType.TOGGLE_BUTTON
-        widget_style.checked_hovered_image.set_editor_property("resource_name", "")
-        widget_style.checked_image.set_editor_property("resource_name", "")
-        widget_style.checked_pressed_image.set_editor_property("resource_name", "")
-        widget_style.checked_hovered_image.tint_color = press_color if not display else checked_hover_color
-        widget_style.checked_image.tint_color = hover_color
-        widget_style.checked_pressed_image.tint_color = hover_color
-        widget_style.unchecked_pressed_image.tint_color = press_color
-        widget_style.unchecked_hovered_image.tint_color = press_color
-        widget_style.unchecked_hovered_image.draw_as = unreal.SlateBrushDrawType.IMAGE
-    else:
-        button = unreal.EditorUtilityButton()
-    
-    if image:
-        size_box = create_size_wrapper(image)
-        size_box.set_width_override(25)
-        size_box.set_height_override(25)
-        slot = layout.add_child_to_horizontal_box(size_box)
-        slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
-        slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
-        slot.set_padding(unreal.Margin(3, 0, 0, 0))
-    button_text = unreal.TextBlock()
-    button_text.font.size = 10
-    button_text.set_text(text)
-    #size_box = create_size_wrapper(button_text)
-    slot = layout.add_child_to_horizontal_box(button_text)
-    slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_RIGHT)
-    slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
-    slot.set_padding(unreal.Margin(10, 0, 0, 0))
-    button.set_content(layout)
-    button.set_tool_tip_text(tool_tip)
-    return button
-
-def create_size_wrapper(widget):
-    size_box = unreal.SizeBox()
-    size_box.add_child(widget)
-    return size_box
 
 
 class StackedWidgetHandle:
@@ -131,7 +77,7 @@ class StackedWidgetHandle:
     def add_tool_box(self):
                 
         for i in self.entity_list:
-            button = create_button_with_text(i.display_name, i.tool_tip, i.icon_path, unreal.CheckBox.static_class())
+            button = shelf_core.create_side_button_with_text(i.display_name, i.tool_tip, i.icon_path, unreal.CheckBox.static_class())
             button.set_is_checked(self.default_is_checked(i.display_name))
             self.button_list.append({i:button})
             wrapper = self._switch(i)
@@ -157,15 +103,17 @@ class StackedWidgetHandle:
                         widget.set_is_read_only(True)
                         widget.set_text("加载失败\n" + traceback.format_exc())
                     if handle_ins:self._handle_instance_list.append(handle_ins)
-                    layout.add_child_to_vertical_box(widget)
-            size_box = create_size_wrapper(button)
+                    slot = layout.add_child_to_vertical_box(widget)
+                    if handle_ins.fill:
+                        slot.size.size_rule = unreal.SlateSizeRule.FILL
+            size_box = shelf_core.create_size_wrapper(button)
             size_box.set_width_override(self.side_button_size)
             size_box.set_height_override(self.side_button_size)
             self.tool_side_layout.add_child(size_box)
     
     def add_utl(self):
-        self.home_button = create_button_with_text(icon_path=shelf_core.Utl.get_full_icon_path("home.png"), button_type=unreal.CheckBox.static_class(), display=False)
-        size_box = create_size_wrapper(self.home_button)
+        self.home_button = shelf_core.create_side_button_with_text(icon_path=shelf_core.Utl.get_full_icon_path("home.png"), button_type=unreal.CheckBox.static_class(), display=False)
+        size_box = shelf_core.create_size_wrapper(self.home_button)
         size_box.set_width_override(self.side_button_size)
         size_box.set_height_override(self.side_button_size)
         # self.tool_size_box.set_width_override(self.side_size.x if state else self.side_size.y
@@ -237,9 +185,9 @@ class CGTeamWorkWindow:
             shelf_core.SideEntity("动画",icon_path=shelf_core.Utl.get_full_icon_path("animation.png")),
             shelf_core.SideEntity("材质",icon_path=shelf_core.Utl.get_full_icon_path("material.png")),
             shelf_core.SideEntity("定序器",icon_path=shelf_core.Utl.get_full_icon_path("sequence.png")),
-            shelf_core.SideEntity("CGTeamWork",icon_path=shelf_core.Utl.get_full_icon_path("cgteamwork.png")),
             shelf_core.SideEntity("脚本",icon_path=shelf_core.Utl.get_full_icon_path("code.png")),
             shelf_core.SideEntity("通用",icon_path=shelf_core.Utl.get_full_icon_path("utl.png")),
+            shelf_core.SideEntity("Gallery",icon_path=shelf_core.Utl.get_full_icon_path("utl.png")),
             shelf_core.SideEntity("日志",icon_path=shelf_core.Utl.get_full_icon_path("log.png")),
         ]
         self.main_layout = unreal.VerticalBox()
