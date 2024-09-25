@@ -1,7 +1,8 @@
 import unreal
 from .... import shelf_core
-import pathlib
 import random
+
+EXPORTABLE = True
 
 def on_click(button: unreal.Button):
     
@@ -13,9 +14,9 @@ def on_click(button: unreal.Button):
     return on_click1
 
 def create():
-    icon_path = unreal.Paths.combine([unreal.Paths.project_plugins_dir(), "UMGForPython/Resources/toobar.png"])
-    unreal.Paths.project_plugins_dir()
+    icon_path = unreal.Paths.combine([unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_plugins_dir()), "UMGForPython/Resources/toolbar.png"])
     button = shelf_core.create_button("Button", icon_path)
-    
     button.on_clicked.add_callable(on_click(button))
     return button
+
+

@@ -57,6 +57,10 @@ void UPythonWidgetExtendLib::ShowWindow(UWidget* Widget)
 void UPythonWidgetExtendLib::SpawnAndRegisterTab(FName TabID, FString TabLabel, UWidget* Widget)
 {
 
+    if (Widget && !Widget->IsRooted())
+    {
+        Widget->AddToRoot();
+    }
     if (!FGlobalTabmanager::Get()->HasTabSpawner(TabID))
     {
         FGlobalTabmanager::Get()->RegisterTabSpawner(TabID, FOnSpawnTab::CreateLambda([TabID, Widget, TabLabel](const FSpawnTabArgs& Args)
@@ -64,7 +68,13 @@ void UPythonWidgetExtendLib::SpawnAndRegisterTab(FName TabID, FString TabLabel, 
             return SNew(SDockTab)
                 .Clipping(EWidgetClipping::ClipToBounds)
                 .Label(FText::FromString(TabLabel))
-                .OnTabClosed_Lambda([TabID](TSharedRef<SDockTab>){FGlobalTabmanager::Get()->UnregisterTabSpawner(TabID);})
+                .OnTabClosed_Lambda([TabID, Widget](TSharedRef<SDockTab>){
+                    FGlobalTabmanager::Get()->UnregisterTabSpawner(TabID);
+                    if (Widget && Widget->IsRooted())
+                    {
+                        Widget->RemoveFromRoot();
+                    }
+                })
                 [
                     Widget->TakeWidget()
                 ];

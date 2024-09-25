@@ -19,6 +19,9 @@ def start():
         importlib.reload(shelf_utl)
         shelf_utl.register_all_stack_handle(True)
         importlib.reload(_main)
+        if UMGWIDGET:
+            del UMGWIDGET
+            UMGWIDGET = None
         UMGWIDGET = _main.CGTeamWorkWindow()
     else:
         if not UMGWIDGET:

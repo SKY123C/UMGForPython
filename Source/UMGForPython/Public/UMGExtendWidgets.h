@@ -21,3 +21,11 @@ public:
 	void SetExpandableAreaHead(UWidget* InWidget) { HeaderContent = InWidget; };
 };
 
+UCLASS()
+class UMYTest : public UObject
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<UObject> Ptr;
+};

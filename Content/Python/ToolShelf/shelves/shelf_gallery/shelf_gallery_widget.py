@@ -7,10 +7,7 @@ import threading
 import time
 import importlib
 import pathlib
-
-
 import sys
-sys.modules
 class GalleryHandle(shelf_core.StackWidgetHandle):
     
     instance = True
@@ -28,8 +25,8 @@ class GalleryHandle(shelf_core.StackWidgetHandle):
             if widget_file.is_file():
                 module = importlib.import_module(f".gallery_widgets.{widget_file.stem}", __package__)
                 if shelf_utl.get_is_debug():
-                    importlib.reload(module)
-                if hasattr(module, "create"):
+                    module = importlib.reload(module)
+                if hasattr(module, "create") and hasattr(module, "EXPORTABLE") and getattr(module, "EXPORTABLE"):
                     widget = module.create()
                     self._root_widget.add_child_to_vertical_box(widget)
             #__import__(f"gallery_widgets.{widget_file.stem}", level=2)
