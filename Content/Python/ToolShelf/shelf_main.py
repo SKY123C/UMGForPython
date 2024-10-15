@@ -1,6 +1,7 @@
 import unreal
 from . import shelf_core
 import traceback
+import gc
 
 
 class StackedWidgetHandle:
@@ -100,11 +101,11 @@ class StackedWidgetHandle:
                     except Exception as e:
                         widget = unreal.TextBlock()
                         widget.font.size = 10
-                        widget.set_is_read_only(True)
+                        #widget.set_is_read_only(True)
                         widget.set_text("加载失败\n" + traceback.format_exc())
                     if handle_ins:self._handle_instance_list.append(handle_ins)
                     slot = layout.add_child_to_vertical_box(widget)
-                    if handle_ins.fill:
+                    if handle_ins and handle_ins.fill:
                         slot.size.size_rule = unreal.SlateSizeRule.FILL
             size_box = shelf_core.create_size_wrapper(button)
             size_box.set_width_override(self.side_button_size)
@@ -166,10 +167,10 @@ class StackedWidgetHandle:
         self.container_widget.set_active_widget_index(index)
     
     def register_handles(self):
+        gc.collect()
         self._handle_list = shelf_core.StackWidgetHandle.__subclasses__()
         self._handle_list.sort(key=lambda x: x.order)
         for i in self._handle_list:
-            print(i)
             if i.instance:
                 for entity in self.entity_list:
                     if entity.display_name in i.support_tool:

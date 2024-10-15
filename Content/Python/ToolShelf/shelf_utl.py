@@ -22,16 +22,14 @@ def register_all_stack_handle(reload=False):
     root = "ToolShelf"
     shelf_name = "shelves"
     for x in pathlib.Path(__file__).parent.joinpath(shelf_name).iterdir():
+        print(x)
+        module_obj = None
         if check_py(x) and x.stem.startswith("shelf_"):
             module_obj = importlib.import_module(f".{shelf_name}.{x.stem}", root)
-            if reload:
-                importlib.reload(module_obj)
-        elif x.is_dir():
-            for x1 in x.iterdir():
-                if check_py(x1) and x1.stem.startswith("shelf_"):
-                    module_obj = importlib.import_module(f".{shelf_name}.{x.stem}.{x1.stem}", root)
-                    if reload:
-                        importlib.reload(module_obj)
+        elif x.is_dir() and not x.stem.startswith("__"):
+            module_obj = importlib.import_module(f".{shelf_name}.{x.stem}", root)
+        if reload and module_obj:
+            importlib.reload(module_obj)
 
 def get_is_debug():
     tw_debug = os.environ.get("tw_debug")

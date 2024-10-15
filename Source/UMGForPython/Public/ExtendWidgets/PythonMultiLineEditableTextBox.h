@@ -1,9 +1,5 @@
 ﻿#pragma once
 #include "CoreMinimal.h"
-#include "EditorUtilityWidget.h"
-#include "Components/Button.h"
-#include "Blueprint/UserWidget.h"
-#include "Components/Widget.h"
 #include "UMG.h"
 #include "Framework/Text/BaseTextLayoutMarshaller.h"
 #include "Framework/Text/RichTextLayoutMarshaller.h"

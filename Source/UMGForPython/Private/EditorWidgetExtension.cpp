@@ -30,7 +30,94 @@
         UE_LOG(LogTemp, Warning, TEXT("Style: %s Not Support yet"), *Style); \
     } \
 };
+UTexture2D* UPythonWidgetExtendLib::CreateTexture2DFromRaw(TArray<uint8> RawData, int32 Width, int32 Height, int32 ChannelNum, bool bUseSRGB, int32 TextureFilterValue, bool bBGR, bool bFlipY)
+{
 
+    // Decompress PNG image
+
+    if (Width <= 0 || Height <= 0)
+        return nullptr;
+    if (RawData.Num() != Width * Height * ChannelNum)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("RawData.Num(%d) != Width(%d) * Height(%d) * ChannelNum(%d)"), RawData.Num(), Width, Height, ChannelNum);
+        return nullptr;
+    }
+
+
+    // Fill in the base mip for the texture we created
+    UTexture2D* NewTexture2D = UTexture2D::CreateTransient(Width, Height, EPixelFormat::PF_B8G8R8A8);
+
+    NewTexture2D->Source.Init(Width, Height, 1, 1, ETextureSourceFormat::TSF_BGRA8, nullptr);
+    NewTexture2D->UpdateResource();
+    // Fill in the base mip for the texture we created
+#if ENGINE_MAJOR_VERSION == 5
+    uint8* MipData = NewTexture2D->Source.LockMip(0);
+#else
+    uint8* MipData = (uint8*)NewTexture2D->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+#endif
+    for (int32 y = 0; y < Height; y++)
+    {
+        uint8* DestPtr = bFlipY ? &MipData[y * Width * sizeof(FColor)] : &MipData[(Height - 1 - y) * Width * sizeof(FColor)];
+        //const FColor* SrcPtr = &((FColor*)(RawData.GetData()))[(Height - 1 - y) * Width];
+
+        for (int32 x = 0; x < Width; x++)
+        {
+            int32 Index = (x + Width * y) * ChannelNum;
+            uint8 r = RawData[Index];
+            uint8 g = 0, b = 0, a = 0;
+            if (ChannelNum == 1)
+            {
+                g = b = r;
+                a = 255;
+            }
+            else if (ChannelNum == 2)
+            {
+                g = b = r;
+                a = RawData[Index + 1];
+            }
+            else if (ChannelNum == 3)
+            {
+                g = RawData[Index + 1];
+                b = RawData[Index + 2];
+                a = 255;
+            }
+            else if (ChannelNum == 4) {
+                g = RawData[Index + 1];
+                b = RawData[Index + 2];
+                a = RawData[Index + 3];
+            }
+            *DestPtr++ = bBGR ? r : b;
+            *DestPtr++ = g;
+            *DestPtr++ = bBGR ? b : r;
+            *DestPtr++ = a;
+
+        }
+    }
+#if ENGINE_MAJOR_VERSION == 5
+    NewTexture2D->Source.UnlockMip(0);
+#else
+    NewTexture2D->PlatformData->Mips[0].BulkData.Unlock();
+#endif
+
+    // Set options
+    NewTexture2D->SRGB = bUseSRGB;
+    NewTexture2D->CompressionNone = true;
+    NewTexture2D->MipGenSettings = TMGS_NoMipmaps;
+    NewTexture2D->CompressionSettings = TC_Default;
+    NewTexture2D->AddressX = TextureAddress::TA_Clamp;
+    NewTexture2D->AddressY = TextureAddress::TA_Clamp;
+    NewTexture2D->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
+
+    NewTexture2D->Filter = TF_Default;
+    if (0 <= TextureFilterValue && TextureFilterValue < TF_MAX) {
+        NewTexture2D->Filter = (TextureFilter)(TextureFilterValue);
+    }
+    // Update the remote texture data
+    NewTexture2D->UpdateResource();
+    NewTexture2D->PostEditChange();
+    FTextureCompilingManager::Get().FinishCompilation({ NewTexture2D });
+    return NewTexture2D;
+}
 UTexture2D* UPythonWidgetExtendLib::CreateTexture2DFromFile(FString FilePath)
 {
     UTexture2D* Texture2D = nullptr;
@@ -56,7 +143,6 @@ void UPythonWidgetExtendLib::ShowWindow(UWidget* Widget)
 
 void UPythonWidgetExtendLib::SpawnAndRegisterTab(FName TabID, FString TabLabel, UWidget* Widget)
 {
-
     if (Widget && !Widget->IsRooted())
     {
         Widget->AddToRoot();
@@ -68,7 +154,7 @@ void UPythonWidgetExtendLib::SpawnAndRegisterTab(FName TabID, FString TabLabel, 
             return SNew(SDockTab)
                 .Clipping(EWidgetClipping::ClipToBounds)
                 .Label(FText::FromString(TabLabel))
-                .OnTabClosed_Lambda([TabID, Widget](TSharedRef<SDockTab>){
+                .OnTabClosed_Lambda([TabID, Widget](TSharedRef<SDockTab>) {
                     FGlobalTabmanager::Get()->UnregisterTabSpawner(TabID);
                     if (Widget && Widget->IsRooted())
                     {
@@ -148,31 +234,4 @@ void UPythonWidgetExtendLib::GetBrush(FSlateBrush& Brush, FString Style, FString
     else {
         UE_LOG(LogTemp, Warning, TEXT("Style: %s Not Support yet. Supperted Style: FEditorStyle, FCoreStyle and FAppStyle."), *Style);
     }
-}
-
-UPythonUserWidget::UPythonUserWidget(const FObjectInitializer& ObjectInitializer)
-    : Super(ObjectInitializer)
-{
-    WidgetTree = NewObject<UWidgetTree>(this, TEXT("WidgetTree"), RF_Transient);
-    UWidget* RootLayout = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-    WidgetTree->RootWidget = RootLayout;
-}
-
-bool UPythonUserWidget::Initialize()
-{
-    bool b = Super::Initialize();
-    CustomInitialize();
-    return true;
-}
-
-void UPythonUserWidget::CustomInitialize_Implementation()
-{
-    
-}
-
-FReply UPythonUserWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
-{
-    
-    UE_LOG(LogTemp, Warning, TEXT("%d"), &InMouseEvent);
-    return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }

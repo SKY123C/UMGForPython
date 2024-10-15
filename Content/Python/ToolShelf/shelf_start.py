@@ -1,13 +1,12 @@
 from . import shelf_main as _main
 from . import (
                 shelf_core,
-                shelf_utl
+                shelf_utl,
+                shelf_utl_widgets,
                 )
 import importlib
 import os
 import unreal
-import pathlib
-import sys
 
 UMGWIDGET = None
 os.environ["tw_debug"] = "False"
@@ -17,11 +16,9 @@ def start():
     if os.environ.get("tw_debug") == "True":
         importlib.reload(shelf_core)
         importlib.reload(shelf_utl)
+        importlib.reload(shelf_utl_widgets)
         shelf_utl.register_all_stack_handle(True)
         importlib.reload(_main)
-        if UMGWIDGET:
-            del UMGWIDGET
-            UMGWIDGET = None
         UMGWIDGET = _main.CGTeamWorkWindow()
     else:
         if not UMGWIDGET:

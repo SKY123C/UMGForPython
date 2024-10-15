@@ -1,4 +1,10 @@
 ﻿#include "ExtendWidgets/PythonListView.h"
+#include "Widgets/Views/SHeaderRow.h"
+
+UPythonListViewString::UPythonListViewString(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+}
 
 void UPythonListViewString::AddItem(const FString& InItem)
 {
@@ -54,12 +60,39 @@ TArray<FString> UPythonListViewString::GetSelectedItems()
 	return Result;
 }
 
+TArray<FString> UPythonListViewString::GetItems()
+{
+	TArray<FString> Result;
+	for (auto i : ListItems)
+	{
+		Result.Add(*i.Get());
+	}
+	return Result;
+}
+
+TArray<FString> UPythonListViewString::AddSingleHeaderRow(FName Name)
+{
+	if (!HeaderRow.IsValid())
+	{
+		HeaderRow = SNew(SHeaderRow);
+	}
+	HeaderRow->ClearColumns();
+	HeaderRow->AddColumn(
+		SHeaderRow::Column(Name)
+		.DefaultLabel(FText::FromName(Name))
+		.FillWidth(4)
+	);
+	return TArray<FString>();
+}
+
+
 TSharedRef<ITableRow> UPythonListViewString::OnGenerateWidget(TSharedPtr<FString> Item, const TSharedRef<STableViewBase>& OwnerTable)
 {
 	return
 		SNew(STableRow<TSharedPtr<FString>>, OwnerTable)
+		.Padding(FMargin(4,4,4,4))
 		[
-			SNew( STextBlock )
+			SNew(STextBlock)
 			.Text( FText::FromString(*Item.Get()) )
 		];
 }
@@ -72,12 +105,14 @@ void UPythonListViewString::OnSelectioinChanged(TSharedPtr<FString> Item, ESelec
 
 TSharedRef<SWidget> UPythonListViewString::RebuildWidget()
 {
+
 	MyListView = 
 		SNew(SListView< TSharedPtr<FString> >)
-		.ItemHeight((float)200)
 		.ListItemsSource(&ListItems)
 		.OnGenerateRow_UObject(this, &UPythonListViewString::OnGenerateWidget)
 		.OnSelectionChanged_UObject(this, &UPythonListViewString::OnSelectioinChanged)
+		.AllowOverscroll(EAllowOverscroll::No)
+		.HeaderRow(HeaderRow)
 		;
 
 	SynchronizeProperties();

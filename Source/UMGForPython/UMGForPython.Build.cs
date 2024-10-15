@@ -42,7 +42,6 @@ public class UMGForPython : ModuleRules
                 "Projects",
 				"UnrealEd",
                 "PythonScriptPlugin",
-                "Python3",
                 "UMG",
                 "Blutility",
 				"InputCore"

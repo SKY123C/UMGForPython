@@ -32,7 +32,3 @@ def create():
     context_menu.set_content(layout)
     layout1.add_child_to_vertical_box(context_menu)
     return layout1
-
-
-
-#unreal.PythonWidgetExtendLib.spawn_and_register_tab("Tool Shelf", "Tool Shelf", create())

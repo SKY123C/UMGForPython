@@ -1,19 +1,13 @@
 ﻿#pragma once
 #include "CoreMinimal.h"
-#include "EditorUtilityWidget.h"
-#include "Components/Button.h"
-#include "Blueprint/UserWidget.h"
-#include "Components/Widget.h"
 #include "UMG.h"
-#include "InputCoreTypes.h"
-#include "Input/Events.h"
 #include "Widgets/Views/SlistView.h"
 #include "PythonListView.generated.h"
 
 UCLASS()
 class UPythonListViewString : public UWidget
 {
-	GENERATED_BODY()
+	GENERATED_UCLASS_BODY()
 
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSelectionChangedEvent, FString, SelectedItem, ESelectInfo::Type, SelectionType);
 
@@ -36,16 +30,24 @@ public:
 	UFUNCTION(BlueprintCallable)
 	TArray<FString> GetSelectedItems();
 
+	UFUNCTION(BlueprintCallable)
+	TArray<FString> GetItems();
+
+	UFUNCTION(BlueprintCallable)
+	TArray<FString> AddSingleHeaderRow(FName Name);
+
 public:
 
 	UPROPERTY(BlueprintAssignable)
 	FOnSelectionChangedEvent OnSelectionChanged;
 
-	UPROPERTY(EditAnyWhere)
+	UPROPERTY(BlueprintReadWrite,EditAnyWhere)
 	bool Multi;
 
-	UPROPERTY(EditAnyWhere)
+	UPROPERTY(BlueprintReadWrite,EditAnyWhere)
 	int ItemHeight = 15;
+
+
 
 public:
 
@@ -58,5 +60,6 @@ protected:
 	TArray< TSharedPtr<FString> > ListItems;
 	virtual TSharedRef<SWidget> RebuildWidget() override final;
 	TSharedPtr< SListView< TSharedPtr<FString> >> MyListView;
+	TSharedPtr<SHeaderRow> HeaderRow = SNew(SHeaderRow);
 };
 

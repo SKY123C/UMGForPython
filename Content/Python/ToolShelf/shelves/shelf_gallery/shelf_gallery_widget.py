@@ -1,13 +1,9 @@
 
 from ... import shelf_core, shelf_utl
-#from .gallery_widgets import gallery_button
 import unreal
-import os
-import threading
-import time
 import importlib
 import pathlib
-import sys
+
 class GalleryHandle(shelf_core.StackWidgetHandle):
     
     instance = True
@@ -27,9 +23,7 @@ class GalleryHandle(shelf_core.StackWidgetHandle):
                 if shelf_utl.get_is_debug():
                     module = importlib.reload(module)
                 if hasattr(module, "create") and hasattr(module, "EXPORTABLE") and getattr(module, "EXPORTABLE"):
+                    print(11111)
                     widget = module.create()
                     self._root_widget.add_child_to_vertical_box(widget)
-            #__import__(f"gallery_widgets.{widget_file.stem}", level=2)
-            
-            #importlib.import_module(f".gallery_widgets.gallery_button", "ToolShelf")
         
