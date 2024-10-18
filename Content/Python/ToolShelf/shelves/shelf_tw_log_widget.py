@@ -1,5 +1,4 @@
-from .. import (shelf_core,
-                shelf_utl,
+from .. import (shelf_core, shelf_utl
                 )
 import logging
 import unreal
@@ -19,7 +18,9 @@ class LogToolHandle(shelf_core.StackWidgetHandle):
         self.__expand_area_map = {
             ""
         }
-        shelf_utl.create_logger("ToolShelf", self)
+        shelf_core.ToolShelfLogger.set_default_output(self)
+        shelf_core.ToolShelfLogger.create_logger("ToolShelf")
+        #base_controll.create_logger("ToolShelf", self)
     
     def setup(self):
         self._root_widget = unreal.VerticalBox()
@@ -28,7 +29,7 @@ class LogToolHandle(shelf_core.StackWidgetHandle):
         self.filter_menu.get_editor_property("on_get_menu_content_event").bind_callable(self.init_filter_menu)
         self.filter_btn = shelf_core.create_button("Filter", icon_path=shelf_core.Utl.get_full_icon_path("filter.png"))
         self.filter_btn.set_background_color(unreal.LinearColor())
-        self.filter_btn.widget_style.normal.outline_settings.width = 0
+        #self.filter_btn.widget_style.normal.outline_settings.width = 0
         self.filter_menu.set_content(self.filter_btn)
         filter_layout.add_child_to_horizontal_box(self.filter_menu)
         self.edit_box = unreal.PythonMultiLineEditableTextBox()
@@ -37,6 +38,10 @@ class LogToolHandle(shelf_core.StackWidgetHandle):
         slot = self._root_widget.add_child_to_vertical_box(self.edit_box)
         slot.size.size_rule = unreal.SlateSizeRule.FILL
     
+    def __create_root_logger(self):
+        
+        
+        ...
     def init_filter_menu(self):
         layout = unreal.VerticalBox()
 
