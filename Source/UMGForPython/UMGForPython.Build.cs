@@ -44,7 +44,8 @@ public class UMGForPython : ModuleRules
                 "PythonScriptPlugin",
                 "UMG",
                 "Blutility",
-				"InputCore"
+				"InputCore",
+                "Python3"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
