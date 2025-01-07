@@ -178,6 +178,7 @@ class StackWidgetHandle(BaseHandle):
 
     instance = False
     fill = False
+    padding = unreal.Margin(0,0,0,0)
     
     def __init__(self, entity: SideEntity, handle_id=""):
         self.entity = entity

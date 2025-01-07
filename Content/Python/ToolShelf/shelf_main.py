@@ -104,9 +104,12 @@ class StackedWidgetHandle:
                         #widget.set_is_read_only(True)
                         widget.set_text("加载失败\n" + traceback.format_exc())
                     if handle_ins:self._handle_instance_list.append(handle_ins)
-                    slot = layout.add_child_to_vertical_box(widget)
-                    if handle_ins and handle_ins.fill:
-                        slot.size.size_rule = unreal.SlateSizeRule.FILL
+                    slot: unreal.VerticalBoxSlot = layout.add_child_to_vertical_box(widget)
+                    if handle_ins:
+                        if handle_ins.fill:
+                            slot.size.size_rule = unreal.SlateSizeRule.FILL
+                        slot.set_padding(handle_ins.padding)
+                    
             size_box = shelf_core.create_size_wrapper(button)
             size_box.set_width_override(self.side_button_size)
             size_box.set_height_override(self.side_button_size)
