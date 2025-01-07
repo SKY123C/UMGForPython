@@ -85,21 +85,20 @@ class ToolShelfLogger:
         logger_handle.setStream(self)
         self._logger.addHandler(logger_handle)
         self.out_object = out_object
-        self.__tmp_str = ""
         self.__tmp_error_str = ""
         self.__tmp_warning_str = ""
         self.__logger_state = ToolShelfLogger.LoggerState.END
     
     def begin(self):
+        self.__tmp_error_str = ""
+        self.__tmp_warning_str = ""
         if self.__logger_state == ToolShelfLogger.LoggerState.START:
             raise
         self.__logger_state = ToolShelfLogger.LoggerState.START
-        ...
     
     def end(self):
-        self.__tmp_str = ""
         self.__logger_state = ToolShelfLogger.LoggerState.END
-        ...
+
     @property
     def logger(self):
         return self._logger

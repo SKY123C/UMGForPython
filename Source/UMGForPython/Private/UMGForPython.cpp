@@ -3,6 +3,8 @@
 #include "Python.h"
 #include "Async/Async.h"
 #include "pystate.h"
+#include "Interfaces/IPluginManager.h"
+#include "Styling/SlateStyleRegistry.h"
 #define LOCTEXT_NAMESPACE "FUMGForPythonModule"
 
 static PyObject* CallFunc(PyObject* InArgs, PyObject* InKwargs)
@@ -61,6 +63,7 @@ PyMethodDef PyhonExtendsion[] = {
 
 void FUMGForPythonModule::StartupModule()
 {
+    RegisterStyle();
     PyGILState_STATE State = PyGILState_Ensure();
     PyObject* Modules = PyImport_GetModuleDict();
     PyObject* UnrealModule = PyDict_GetItemString(Modules, "unreal");
@@ -73,6 +76,32 @@ void FUMGForPythonModule::StartupModule()
 
 void FUMGForPythonModule::ShutdownModule()
 {
+    UnregisterStyle();
+}
+
+void FUMGForPythonModule::RegisterStyle()
+{
+#define IMAGE_BRUSH_SVG(RelativePath, ...) FSlateVectorImageBrush(StyleInstance->RootToContentDir(RelativePath, TEXT(".svg")), __VA_ARGS__)
+
+    StyleInstance = MakeUnique<FSlateStyleSet>("UMGForPythonStyleSet");
+    TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("UMGForPython"));
+    if (Plugin.IsValid())
+    {
+        StyleInstance->SetContentRoot(FPaths::Combine(Plugin->GetBaseDir(), TEXT("Resources")));
+    }
+    const FVector2D Icon32x32(32.0f, 32.0f);
+
+    StyleInstance->Set("UMGForPython.Icon", new IMAGE_BRUSH_SVG("toolbar", Icon32x32));
+    FSlateStyleRegistry::RegisterSlateStyle(*StyleInstance.Get());
+
+
+#undef IMAGE_BRUSH
+}
+
+void FUMGForPythonModule::UnregisterStyle()
+{
+    FSlateStyleRegistry::UnRegisterSlateStyle(*StyleInstance.Get());
+    StyleInstance.Reset();
 }
 
 #undef LOCTEXT_NAMESPACE

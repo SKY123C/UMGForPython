@@ -21,12 +21,9 @@ def set_logger_output(i):
     
     
 def register_all_stack_handle(reload=False):
-    '''
-    dadsada
-    '''
     def check_py(in_path: pathlib.Path):
         return in_path.is_file() and in_path.suffix.lower() == ".py" and not in_path.stem.startswith("__")
-    root = "TATools.ToolShelf"
+    root = "ToolShelf"
     shelf_name = "shelves"
     for x in pathlib.Path(__file__).parent.joinpath(shelf_name).iterdir():
         module_obj = None

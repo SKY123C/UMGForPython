@@ -10,7 +10,7 @@ import unreal
 
 UMGWIDGET = None
 os.environ["tw_debug"] = "False"
-def start():
+def start(show=True):
     global UMGWIDGET
     
     if os.environ.get("tw_debug") == "True":
@@ -24,4 +24,5 @@ def start():
         if not UMGWIDGET:
             shelf_utl.register_all_stack_handle(False)
             UMGWIDGET = _main.CGTeamWorkWindow()
-    unreal.PythonWidgetExtendLib.spawn_and_register_tab("Tool Shelf", "Tool Shelf", UMGWIDGET.main_layout)
+    if show:
+        unreal.PythonWidgetExtendLib.spawn_and_register_tab("Tool Shelf", "Tool Shelf", UMGWIDGET.main_layout)
