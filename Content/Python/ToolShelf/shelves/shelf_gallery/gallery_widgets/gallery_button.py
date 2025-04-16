@@ -6,6 +6,9 @@ from .. import gallery_class
 
 class GallaryButton(gallery_class.GallaryWidgetFactory):
 
+    def with_content(self):
+        return "Button"
+    
     def on_click(self, button: unreal.Button):
         
         def on_click1():

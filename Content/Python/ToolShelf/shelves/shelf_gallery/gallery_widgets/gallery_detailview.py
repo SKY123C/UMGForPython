@@ -9,4 +9,6 @@ class GalleryDetailView(gallery_class.GallaryWidgetFactory):
         widget = unreal.DetailsView()
         widget.set_object(unreal.StaticMesh.static_class())
         return widget
-        
+    
+    def with_content(self):
+        return "DetailView"

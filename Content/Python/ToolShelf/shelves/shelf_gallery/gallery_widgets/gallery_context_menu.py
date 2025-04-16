@@ -11,7 +11,9 @@ def on_click(button, context_menu: unreal.MenuAnchor):
 
 class GallaryContextMenu(gallery_class.GallaryWidgetFactory):
 
-
+    def with_content(self):
+        return "Context Menu"
+    
     def create_menu(self):
         layout = unreal.VerticalBox()
         for i in range(10):

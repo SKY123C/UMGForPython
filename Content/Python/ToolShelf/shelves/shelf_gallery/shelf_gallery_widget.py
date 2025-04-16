@@ -27,10 +27,17 @@ class GalleryHandle(shelf_core.StackWidgetHandle):
                     module = importlib.reload(module)
                 
         for i in gallery_class.GallaryWidgetFactory.__subclasses__():
-            print(i)
             c = i()
             widget = c.create()
-            slot: unreal.VerticalBoxSlot = self._root_widget.add_child_to_vertical_box(widget)
+            expand_area = unreal.PythonExpandableArea()
+            expand_area.set_expandable_area_body(widget)
+            text = unreal.TextBlock()
+            text.font.size = 10
+            text.set_text(c.with_content())
+            expand_area.set_expandable_area_head(text)
+            slot: unreal.VerticalBoxSlot = self._root_widget.add_child_to_vertical_box(expand_area)
             slot.set_padding(unreal.Margin(0, 0, 0, 5))
+        else:
+            slot.size.size_rule = unreal.SlateSizeRule.FILL
 
         

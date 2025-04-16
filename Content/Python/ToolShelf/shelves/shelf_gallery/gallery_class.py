@@ -7,4 +7,5 @@ class GallaryWidgetFactory:
 
     def create(self) -> unreal.Widget:
         ...
-    
+    def with_content(self):
+        return "Example"
