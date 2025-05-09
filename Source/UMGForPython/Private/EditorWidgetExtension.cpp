@@ -6,6 +6,10 @@
 #include "TextureCompiler.h"
 #include "ImageUtils.h"
 #include "UMG.h"
+#include <iostream>
+#include <sstream>
+#include <string>
+#include "Misc/Parse.h"
 
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >=1
 #define FEditorStyle FAppStyle
@@ -235,3 +239,13 @@ void UPythonWidgetExtendLib::GetBrush(FSlateBrush& Brush, FString Style, FString
         UE_LOG(LogTemp, Warning, TEXT("Style: %s Not Support yet. Supperted Style: FEditorStyle, FCoreStyle and FAppStyle."), *Style);
     }
 }
+
+void haha() {
+    UE_LOG(LogTemp, Display, TEXT("%s"), *FString("Test"));
+}
+PRAGMA_DISABLE_OPTIMIZATION
+void UPythonWidgetExtendLib::CallFuncByAddress(FString Address)
+{
+    ((void(*)(void))FParse::HexNumber64(*Address))();
+}
+PRAGMA_ENABLE_OPTIMIZATION

@@ -15,10 +15,14 @@ class ScriptToolHandleClass(unreal.Object):
     def _post_init(self):
         self.debug = True if os.environ.get("tw_debug") == "True" else False
         
-    @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "打印所选资产", "Category": "打 印"})
+    @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "打印所选资产以及属性", "Category": "打 印"})
     def print_selected_assets(self):
+        unreal.clear
         for i in unreal.EditorUtilityLibrary.get_selected_assets():
             print(i)
+            for j in sorted(dir(i)):
+                print(j)
+            print("-"* 20)
     
     @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "打印所选Actor", "Category": "打 印"})
     def print_selected_actors(self):
@@ -49,6 +53,7 @@ class ScriptToolHandleClass(unreal.Object):
     def exec_gc(self):
         unreal.SystemLibrary.collect_garbage()
     
+    
                        
 class ScriptToolHandle(shelf_core.StackWidgetHandle):
     
@@ -65,17 +70,17 @@ class ScriptToolHandle(shelf_core.StackWidgetHandle):
         self._root_widget.add_child(self.details_view)
         self.details_view.on_property_changed.add_callable(self.on_property_changed)
         self.layout = unreal.HorizontalBox()
-        self.menu = unreal.MenuAnchor()
-        self.btn = unreal.EditorUtilityButton()
-        text = unreal.TextBlock()
-        text.set_text("Menu")
-        text.font.size = 10
-        self.btn.set_content(text)
+        #self.menu = unreal.MenuAnchor()
+        # self.btn = unreal.EditorUtilityButton()
+        # text = unreal.TextBlock()
+        # text.set_text("Menu")
+        # text.font.size = 10
+        # self.btn.set_content(text)
         
-        self.btn.on_clicked.add_callable(self.test)
-        self.menu.add_child(self.btn)
-        self.layout.add_child_to_horizontal_box(self.menu)
-        self.menu.get_editor_property("on_get_menu_content_event").bind_callable(self.create)
+        #self.btn.on_clicked.add_callable(self.test)
+        #self.menu.add_child(self.btn)
+        #self.layout.add_child_to_horizontal_box(self.menu)
+        #self.menu.get_editor_property("on_get_menu_content_event").bind_callable(self.create)
         self._root_widget.add_child_to_vertical_box(self.layout)
         #self._root_widget.add_child_to_vertical_box(self.input_btn)
     

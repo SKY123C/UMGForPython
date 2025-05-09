@@ -1,0 +1,7 @@
+{
+    "unreal_mcp":
+    {
+        "file": "unreal_mcp.py",
+        "enable": true
+    }
+}

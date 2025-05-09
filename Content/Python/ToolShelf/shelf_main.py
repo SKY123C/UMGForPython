@@ -189,8 +189,8 @@ class CGTeamWorkWindow:
             shelf_core.SideEntity("动画",icon_path=shelf_core.Utl.get_full_icon_path("animation.png")),
             shelf_core.SideEntity("材质",icon_path=shelf_core.Utl.get_full_icon_path("material.png")),
             shelf_core.SideEntity("定序器",icon_path=shelf_core.Utl.get_full_icon_path("sequence.png")),
+            shelf_core.SideEntity("AI",icon_path=shelf_core.Utl.get_full_icon_path("AI.png")),
             shelf_core.SideEntity("脚本",icon_path=shelf_core.Utl.get_full_icon_path("code.png")),
-            shelf_core.SideEntity("通用",icon_path=shelf_core.Utl.get_full_icon_path("utl.png")),
             shelf_core.SideEntity("Gallery",icon_path=shelf_core.Utl.get_full_icon_path("utl.png")),
             shelf_core.SideEntity("日志",icon_path=shelf_core.Utl.get_full_icon_path("log.png")),
         ]

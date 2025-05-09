@@ -52,4 +52,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	static void GetBrush(FSlateBrush& Brush, FString Style, FString BrushNmae);
 
+	UFUNCTION(BlueprintCallable)
+	static void CallFuncByAddress(FString Address);
+
 };

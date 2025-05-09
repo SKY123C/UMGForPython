@@ -4,49 +4,6 @@ import os
 import logging
 from enum import Enum
 
-@unreal.uclass()
-class CGTeamWorkImportOptions(unreal.Object):
-    
-    task = unreal.uproperty(str, meta={"DisplayName": "任务名称", "GetOptions": "get_all_task", "Category": "参 数"})
-    stage = unreal.uproperty(str, meta={"DisplayName": "环 节", "GetOptions": "get_all_stage", "Category": "参 数"})
-    shot = unreal.uproperty(str, meta={"DisplayName": "镜 头", "GetOptions": "get_all_shots", "Category": "参 数"})
-    ani = unreal.uproperty(str, meta={"DisplayName": "场 次", "GetOptions": "get_all_ani", "Category": "参 数"})
-    project = unreal.uproperty(str, meta={"DisplayName": "项 目", "GetOptions": "get_all_projects", "Category": "参 数"})
-    
-    @unreal.ufunction(ret=unreal.Array(str))
-    def get_all_projects(self):
-        result = unreal.Array(str)
-        
-        return result
-    
-    @unreal.ufunction(ret=unreal.Array(str))
-    def get_all_ani(self):
-        result = unreal.Array(str)
-        return result
-    
-    @unreal.ufunction(ret=unreal.Array(str))
-    def get_all_shots(self):
-        result = unreal.Array(str)
-        return result
-    
-    @unreal.ufunction(ret=unreal.Array(str))
-    def get_all_stage(self):
-        result = unreal.Array(str)
-        return result
-    
-    @unreal.ufunction(ret=unreal.Array(str))
-    def get_all_task(self):
-        result = unreal.Array(str)
-        return result
-
-
-@unreal.uclass()
-class CGTeamWorkFbxImportOptions(unreal.Object):
-    
-    skeleton = unreal.uproperty(unreal.Skeleton, meta={"DisplayName": "骨 骼", "Category": "参 数"})
-    out_directory = unreal.uproperty(unreal.DirectoryPath, meta={"DisplayName": "目标路径", "ContentDir": "", "Category": "参 数"})
-    in_directory = unreal.uproperty(unreal.DirectoryPath, meta={"DisplayName": "Fbx文件夹路径", "RelativePath": "", "BlueprintReadOnly": "", "Category": "参 数"})
-
 
 class ToolShelfLogger:
     
