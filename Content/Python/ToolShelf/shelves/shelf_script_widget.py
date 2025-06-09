@@ -17,7 +17,6 @@ class ScriptToolHandleClass(unreal.Object):
         
     @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "打印所选资产以及属性", "Category": "打 印"})
     def print_selected_assets(self):
-        unreal.clear
         for i in unreal.EditorUtilityLibrary.get_selected_assets():
             print(i)
             for j in sorted(dir(i)):

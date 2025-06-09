@@ -51,7 +51,9 @@ def refresh_enable_state(name):
         popen = subprocess.Popen([mcpo_path.as_posix(), "--config", get_unreal_config_path()])
         print([mcpo_path, "--config", get_unreal_config_path()])
     else:
-        mcpo_model.get_subprocess(name).terminate()
+        if not mcpo_model.get_subprocess(name).poll():
+
+            mcpo_model.get_subprocess(name).kill()
         popen = None
 
     mcpo_model.update_container(name, popen)

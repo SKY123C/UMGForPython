@@ -2,7 +2,18 @@ import unreal
 import pathlib
 import os
 import logging
+import logging.handlers
+import abc
 from enum import Enum
+import tempfile
+
+
+@unreal.uclass()
+class CGTeamWorkFbxImportOptions(unreal.Object):
+    
+    skeleton = unreal.uproperty(unreal.Skeleton, meta={"DisplayName": "骨 骼", "Category": "参 数"})
+    out_directory = unreal.uproperty(unreal.DirectoryPath, meta={"DisplayName": "目标路径", "ContentDir": "", "Category": "参 数"})
+    in_directory = unreal.uproperty(unreal.DirectoryPath, meta={"DisplayName": "Fbx文件夹路径", "RelativePath": "", "BlueprintReadOnly": "", "Category": "参 数"})
 
 
 class ToolShelfLogger:
@@ -17,7 +28,6 @@ class ToolShelfLogger:
     
     @staticmethod
     def create_logger(logger_name, logger_output=None):
-        print(ToolShelfLogger.default_output)
         if not logger_output and ToolShelfLogger.default_output:
             logger_output = ToolShelfLogger.default_output
         result = ToolShelfLogger(logger_name, logger_output)
@@ -27,35 +37,60 @@ class ToolShelfLogger:
     @staticmethod
     def set_default_output(logger_output):
         ToolShelfLogger.default_output = logger_output
+
     def __init__(self, name, out_object):
         self._logger = logging.getLogger(name)
         if self._logger.hasHandlers():
             for i in self._logger.handlers:
-                self._logger.removeHandler(i)
+                i.close()
+            self._logger.handlers.clear()
         logger_handle = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s-%(name)s-%(filename)s-[line:%(lineno)d]'
+        formatter = logging.Formatter('%(filename)s-[line:%(lineno)d]'
                                         '-%(levelname)s-[日志信息]: %(message)s',
-                                        datefmt='%d-%m-%Y')
+                                        datefmt='%Y-%m-%d')
         self.log_str = ""
         self.warning_str= ""
         logger_handle.setFormatter(formatter)
         logger_handle.setStream(self)
+
+        temp_dir = tempfile.gettempdir()
+        log_path = os.path.join(temp_dir, "ToolShelf")
+        if not os.path.exists(log_path):
+            os.mkdir(log_path)
+        log_name = os.path.join(log_path, f"{self._logger.name}.log")
+        fh = logging.handlers.TimedRotatingFileHandler(log_name, when="midnight", interval=1, encoding="utf-8", backupCount=30)
+        fh.suffix = "%Y-%m-%d_%H-%M-%S.log"
+        formatter = logging.Formatter('%(asctime)s-%(name)s-%(filename)s-[line:%(lineno)d]'
+                                            '-%(levelname)s-[日志信息]: %(message)s',
+                                            datefmt='%a, %d %b %Y %H:%M:%S')
+        fh.setLevel(logging.INFO)
+        fh.setFormatter(formatter)
+
+        self._logger.addHandler(fh)
         self._logger.addHandler(logger_handle)
         self.out_object = out_object
+        self.__tmp_str = ""
         self.__tmp_error_str = ""
         self.__tmp_warning_str = ""
         self.__logger_state = ToolShelfLogger.LoggerState.END
+    
+    def get_log_path(self):
+        temp_dir = tempfile.gettempdir()
+        log_path = os.path.join(temp_dir, "ToolShelf")
+        return os.path.join(log_path, f"{self._logger.name}.log")
     
     def begin(self):
+        if self.__logger_state == ToolShelfLogger.LoggerState.START:
+            raise SystemError("尚未使用log end")
         self.__tmp_error_str = ""
         self.__tmp_warning_str = ""
-        if self.__logger_state == ToolShelfLogger.LoggerState.START:
-            raise
         self.__logger_state = ToolShelfLogger.LoggerState.START
+        ...
     
     def end(self):
+        self.__tmp_str = ""
         self.__logger_state = ToolShelfLogger.LoggerState.END
-
+        ...
     @property
     def logger(self):
         return self._logger
@@ -89,6 +124,7 @@ class ToolShelfLogger:
 class BaseHandle:
     
     support_tool = []
+    padding = [0,0,0,0]
     order = 0
     
     def __init__(self, handle_id=""):
@@ -118,6 +154,7 @@ class BaseHandle:
     def export_widget(self) -> unreal.Widget:
         return self._root_widget
     
+    @abc.abstractmethod
     def setup(self):
         ...
 
@@ -135,7 +172,6 @@ class StackWidgetHandle(BaseHandle):
 
     instance = False
     fill = False
-    padding = unreal.Margin(0,0,0,0)
     
     def __init__(self, entity: SideEntity, handle_id=""):
         self.entity = entity
