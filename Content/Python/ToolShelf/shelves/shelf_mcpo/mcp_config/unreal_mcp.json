@@ -1,9 +1,9 @@
 {
      "mcpServers": {
           "unreal_mcp": {
-               "command": "D:/Pipeline/Engine/UE_5.5/Engine/Binaries/ThirdParty/Python3/Win64/python.exe",
+               "command": "D:/I_5/UE_5.4/Engine/Binaries/ThirdParty/Python3/Win64/python.exe",
                "args": [
-                    "D:/I_5_projectt/WaterCave/Plugins/UMGForPython/Content/Python/ToolShelf/shelves/shelf_mcpo/mcp_servers/unreal_mcp/unreal_mcp.py"
+                    "D:/I_5_projectt/III/Plugins/UMGForPython/Content/Python/ToolShelf/shelves/shelf_mcpo/mcp_servers/unreal_mcp/unreal_mcp.py"
                ]
           }
      }

@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string>
 #include "Misc/Parse.h"
+#include "ExtendWidgets/PythonWindow.h"
 
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >=1
 #define FEditorStyle FAppStyle
@@ -133,17 +134,41 @@ void UPythonWidgetExtendLib::GetRootWidget(UUserWidget* Widget)
 {
 
 }
-void UPythonWidgetExtendLib::ShowWindow(UWidget* Widget)
+void UPythonWidgetExtendLib::ShowWindow(UPythonWindow* InWindow, bool bModal)
 {
-    auto Window = SNew(SWindow)                       
-        .Title(FText::FromString("CustomWindow"))     
-        .ClientSize(FVector2D(600, 600))               
-        [                                               
-            Widget->TakeWidget()
-        ];
-   
-    FSlateApplication::Get().AddWindow(Window, true);
+    bool Vaild = InWindow->isVaild();
+    if (Vaild)
+    {
+        InWindow->Reset();
+    }
+    
+    TSharedRef<SWindow> WindowRef = StaticCastSharedRef<SWindow>(InWindow->TakeWidget());
+    TSharedPtr<SWindow> TopWindow = FSlateApplication::Get().GetActiveTopLevelWindow();
+    
+    if (bModal)
+    {
+        GEditor->EditorAddModalWindow(WindowRef);
+    }
+    else
+    {
+        FSlateApplication::Get().AddWindow(WindowRef, true);
+    }
 }
+
+void UPythonWidgetExtendLib::CloseWindow(UPythonWindow* InWindow)
+{
+    if (InWindow->isVaild())
+    {
+        TSharedPtr<SWindow> Window = FSlateApplication::Get().FindWidgetWindow(InWindow->WindowRef());
+        if (Window.IsValid())
+        {
+            Window->RequestDestroyWindow();
+        }
+    }
+
+}
+
+
 
 void UPythonWidgetExtendLib::SpawnAndRegisterTab(FName TabID, FString TabLabel, UWidget* Widget)
 {
