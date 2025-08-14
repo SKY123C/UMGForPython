@@ -202,3 +202,10 @@ class CGTeamWorkWindow:
         self.main_handle = StackedWidgetHandle(self.entity_list, color)
         self.border.set_content(self.main_handle.export_widget)
         slot.size.size_rule = unreal.SlateSizeRule.FILL
+
+    def clear(self):
+        self.main_handle.unregister_handles()
+
+    def __del__(self):
+        print("CGTeamWorkWindow is being deleted")
+        self.clear()

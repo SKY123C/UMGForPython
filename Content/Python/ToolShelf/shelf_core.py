@@ -5,6 +5,8 @@ import logging
 import logging.handlers
 import abc
 from enum import Enum
+import traceback
+from typing import Union
 import tempfile
 
 
@@ -283,3 +285,30 @@ def create_side_button_with_text(text="", tool_tip="", icon_path="", button_type
     button.set_content(layout)
     button.set_tool_tip_text(tool_tip)
     return button
+
+def check_status(message="发生错误，请查看日志"):
+    def wrapper(func):
+        def wrapper2(instance: Union[StackWidgetHandle, unreal.Object], *args, **kwargs):
+            t_logger = None
+
+            if isinstance(instance, StackWidgetHandle):
+                t_logger = instance.logger
+            elif isinstance(instance, unreal.Object):
+                if not hasattr(instance, "logger"):
+                    raise AttributeError("实例没有logger属性")
+                t_logger = unreal.resolve_python_object_handle(instance.logger)
+            else:
+                raise TypeError("实例类型不正确，必须是StackWidgetHandle或unreal.Object的子类")
+            t_logger.begin()
+            try:
+                func(instance, *args, **kwargs)
+            except Exception as e:
+                t_logger.error(traceback.format_exc())
+            t_logger.end()
+            error_message = t_logger.get_section_log(logging.ERROR)
+            if error_message:
+                unreal.EditorDialog.show_message("错误", f"{message}\n{error_message}", unreal.AppMsgType.OK)
+            else:
+                unreal.EditorDialog.show_message("成功", "操作成功", unreal.AppMsgType.OK)
+        return wrapper2
+    return wrapper
