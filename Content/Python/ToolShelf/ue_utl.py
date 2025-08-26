@@ -4,6 +4,7 @@ import sys
 import logging
 import traceback
 from typing import List
+from dataclasses import dataclass
 
 CURRENT_LOGGER = None
 
@@ -27,6 +28,32 @@ def add_logger(func):
         return result
     return wrapper2
 
+@dataclass
+class SequenceSettings:
+    fps: str = "30"
+    frame_start: str = "0"
+    frame_end: str = "100"
+
+    def __post_init__(self):
+        try:
+            float(self.fps)
+        except Exception as e:
+            unreal.log_warning("帧率转换失败，使用默认30")
+            self.fps = "30"
+        try:
+            float(self.frame_start)
+        except Exception as e:
+            unreal.log_warning("起始帧转换失败，使用默认0")
+            self.frame_start = "0"
+        try:
+            float(self.frame_end)
+        except Exception as e:
+            unreal.log_warning("结束帧转换失败，使用默认100")
+            self.frame_end = "100"
+    
+    def frame_range(self):
+        return [int(self.frame_start), int(self.frame_end)]
+
 
 class UnrealUTLInterface:
 
@@ -45,8 +72,8 @@ class UnrealUTLInterface:
         return asset_tools.create_asset(name, path, asset_class, factory)
 
     @add_logger
-    def create_level_sequence_asset(self,path, name, create_camera=False):
-        sequence = None
+    def create_level_sequence_asset(self,path, name, create_camera=False, settings: SequenceSettings = SequenceSettings()):
+        sequence: unreal.MovieSceneSequence = None
         package_name = unreal.Paths.combine([
             path,
             name])
@@ -59,8 +86,12 @@ class UnrealUTLInterface:
                 asset_class=unreal.LevelSequence.static_class(),
                 factory=unreal.LevelSequenceFactoryNew()
             )
+        if settings:
+            sequence.set_display_rate(unreal.FrameRate(int(settings.fps),1))
+            sequence.set_playback_start(int(settings.frame_start))
+            sequence.set_playback_end(int(settings.frame_end))
         if create_camera:
-            self.create_camera_in_sequence(sequence)
+            self.create_camera_in_sequence(sequence, settings.frame_range())
         return sequence
 
     @add_logger

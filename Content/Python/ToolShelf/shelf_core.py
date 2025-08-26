@@ -112,7 +112,8 @@ class ToolShelfLogger:
                 self.__tmp_error_str += text + "\n"
         
         if self.out_object:
-            self.out_object.write(log_type, text)
+            for i in text.split("\n"):
+                self.out_object.write(log_type, i)
         
     def get_section_log(self, log_type):
         result = None

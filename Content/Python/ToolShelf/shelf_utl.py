@@ -3,6 +3,8 @@ import pathlib
 import importlib
 import os
 import unreal
+import sys
+import traceback
 
 logger_output = None
 root_logger = logging.getLogger("ToolShelf")
@@ -26,11 +28,15 @@ def register_all_stack_handle(reload=False):
     root = "ToolShelf"
     shelf_name = "shelves"
     for x in pathlib.Path(__file__).parent.joinpath(shelf_name).iterdir():
-        module_obj = None
-        if check_py(x) and x.stem.startswith("shelf_"):
-            module_obj = importlib.import_module(f".{shelf_name}.{x.stem}", root)
-        elif x.is_dir() and not x.stem.startswith("__"):
-            module_obj = importlib.import_module(f".{shelf_name}.{x.stem}", root)
+        try:
+            module_obj = None
+            if check_py(x) and x.stem.startswith("shelf_"):
+                module_obj = importlib.import_module(f".{shelf_name}.{x.stem}", root)
+            elif x.is_dir() and not x.stem.startswith("__"):
+                module_obj = importlib.import_module(f".{shelf_name}.{x.stem}", root)
+        except Exception as e:
+            unreal.log_error(traceback.format_exc())
+            
         if reload and module_obj:
             importlib.reload(module_obj)
 
@@ -45,6 +51,9 @@ def get_is_debug():
 def create_logger(logger_name):
     custom_logger = logging.getLogger(logger_name)
     logger_list.append(custom_logger)
+
+def extend_python_path():
+    sys.path.append(os.path.join(os.path.dirname(__file__), "site-packages"))
 
 def write(log_id, log_type, text):
     ...

@@ -178,6 +178,15 @@ class StackedWidgetHandle:
                 for entity in self.entity_list:
                     if entity.display_name in i.support_tool:
                         self._handle_instance_list.append(i(entity))
+    
+    def unregister_handles(self):
+        self._handle_list.clear()
+        length = len(self._handle_instance_list)
+        for index in range(length-1,-1,-1):
+            i = self._handle_instance_list[index]
+            self._handle_instance_list.pop(index)
+            i.release_reference()
+            del i
 
 class CGTeamWorkWindow:
     

@@ -10,6 +10,8 @@ import unreal
 
 UMGWIDGET = None
 os.environ["tw_debug"] = "False"
+shelf_utl.extend_python_path()
+
 def start(show=True):
     global UMGWIDGET
     

@@ -54,6 +54,61 @@ class ScriptToolHandleClass(unreal.Object):
     
     
                        
+@unreal.uclass()
+class ScriptWidget(unreal.VerticalBox):
+
+    details_view = unreal.uproperty(unreal.DetailsView)
+    detail_object = unreal.uproperty(ScriptToolHandleClass)
+
+    def _post_init(self):
+        self.details_view = unreal.DetailsView()
+        self.detail_object = ScriptToolHandleClass()
+        self.details_view.set_object(self.detail_object)
+        self.add_child(self.details_view)
+        self.details_view.on_property_changed.add_function(self, "on_property_changed")
+        self.layout = unreal.HorizontalBox()
+        self.menu = unreal.MenuAnchor()
+        self.btn = unreal.Button()
+        text = unreal.TextBlock()
+        text.set_text("Menu")
+        text.font.size = 10
+        self.btn.set_content(text)
+        
+        self.btn.on_clicked.add_callable(self.test)
+        self.menu.add_child(self.btn)
+        self.layout.add_child_to_horizontal_box(self.menu)
+        self.menu.get_editor_property("on_get_menu_content_event").bind_callable(self.create)
+        self.add_child_to_vertical_box(self.layout)
+        self.custom_edit = unreal.PythonMultiLineEditableTextBox()
+        self.add_child_to_vertical_box(self.custom_edit)
+        text = "这是一个<PythonRichText FontSize=\"20.00000\" FontColor=\"R=1 G=0 B=0\">富文本\tadssada</>"\
+            "\n"\
+            "这是一个<PythonRichText FontSize=\"20.00000\" FontColor=\"R= G=1 B=0\">富文本</>"
+        
+        #self._root_widget.add_child_to_vertical_box(self.input_btn)
+        self.custom_edit.set_text(text)
+
+    def test(self):
+        self.menu.open(True)
+
+    @unreal.ufunction(params=[unreal.Name()])
+    def on_property_changed(self, property_name):
+        property_name = str(property_name)
+        if property_name == "debug":
+            os.environ["tw_debug"] = str(getattr(self.detail_object, property_name))
+    
+    def create(self):
+        layout = unreal.VerticalBox()
+        for i in range(10):
+            btn = unreal.Button()
+            text = unreal.TextBlock()
+            text.set_text(str(i))
+            text.font.size = 10
+            btn.add_child(text)
+            layout.add_child_to_vertical_box(btn)
+        return layout
+    
+
 class ScriptToolHandle(shelf_core.StackWidgetHandle):
     
     support_tool = ["脚本"]
@@ -62,57 +117,4 @@ class ScriptToolHandle(shelf_core.StackWidgetHandle):
         super().__init__(entity)
     
     def setup(self):
-        self._root_widget = unreal.VerticalBox()
-        self.details_view = unreal.DetailsView()
-        self.object = ScriptToolHandleClass()
-        self.details_view.set_object(self.object)
-        self._root_widget.add_child(self.details_view)
-        self.details_view.on_property_changed.add_callable(self.on_property_changed)
-        self.layout = unreal.HorizontalBox()
-        #self.menu = unreal.MenuAnchor()
-        # self.btn = unreal.EditorUtilityButton()
-        # text = unreal.TextBlock()
-        # text.set_text("Menu")
-        # text.font.size = 10
-        # self.btn.set_content(text)
-        
-        #self.btn.on_clicked.add_callable(self.test)
-        #self.menu.add_child(self.btn)
-        #self.layout.add_child_to_horizontal_box(self.menu)
-        #self.menu.get_editor_property("on_get_menu_content_event").bind_callable(self.create)
-        self._root_widget.add_child_to_vertical_box(self.layout)
-        #self._root_widget.add_child_to_vertical_box(self.input_btn)
-    
-    def test2(self, input_chord):
-        print(2222)
-        
-    def test(self):
-        self.menu.open(True)
-        ...
-    
-    def on_hover(self):
-        ...
-    
-    def on_leave(self):
-        print(self.input_chord.escape_keys)
-        print(self.input_chord.selected_key)
-        print(self.input_chord.selected_key.key.get_editor_property("key_name"))
-        a = unreal.InputChord()
-        self.input_chord.set_selected_key(a)
-        ...
-    
-    def create(self):
-        layout = unreal.VerticalBox()
-        for i in range(10):
-            btn = unreal.EditorUtilityButton()
-            text = unreal.TextBlock()
-            text.set_text(str(i))
-            text.font.size = 10
-            btn.add_child(text)
-            layout.add_child_to_vertical_box(btn)
-        return layout
-        
-    def on_property_changed(self, property_name):
-        property_name = str(property_name)
-        if property_name == "debug":
-            os.environ["tw_debug"] = str(getattr(self.object, property_name))
+        self._root_widget = ScriptWidget()
