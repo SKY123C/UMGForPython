@@ -4,7 +4,14 @@ import sys
 import logging
 import traceback
 from typing import List
+import abc
 from dataclasses import dataclass
+from enum import Enum, auto
+try:
+    import fbx
+    import FbxCommon
+except Exception as e:
+    pass
 
 CURRENT_LOGGER = None
 
@@ -28,32 +35,118 @@ def add_logger(func):
         return result
     return wrapper2
 
+# property setter getter
 @dataclass
 class SequenceSettings:
-    fps: str = "30"
-    frame_start: str = "0"
-    frame_end: str = "100"
-    camera_name: str = ""
 
+    fps: float = property
+    frame_start: float = property
+    frame_end: float = property
+    camera_name: str = ""
+    
+    @fps
+    def fps(self):
+        return self._fps
+    
+    @fps.setter
+    def fps(self, value):
+        if isinstance(value, str):
+            try:
+                self._fps = float(value)
+            except Exception as e:
+                unreal.log_warning("帧率转换失败，使用默认30")
+                self._fps = 30.0
+        elif isinstance(value, (int, float)):
+            self._fps = float(value)
+    
+    @frame_start
+    def frame_start(self):
+        return self._frame_start
+    
+    @frame_start.setter
+    def frame_start(self, value):
+        if isinstance(value, str):
+            try:
+                self._frame_start = float(value)
+            except Exception as e:
+                unreal.log_warning("起始帧转换失败，使用默认0")
+                self._frame_start = 0.0
+        elif isinstance(value, (int, float)):
+            self._frame_start = float(value)
+        
+    @frame_end
+    def frame_end(self):
+        return self._frame_end
+    
+    @frame_end.setter
+    def frame_end(self, value):
+        if isinstance(value, str):
+            try:
+                self._frame_end = float(value)
+            except Exception as e:
+                unreal.log_warning("结束帧转换失败，使用默认100")
+                self._frame_end = 100.0
+        elif isinstance(value, (int, float)):
+            self._frame_end = float(value)
+    
     def __post_init__(self):
-        try:
-            float(self.fps)
-        except Exception as e:
-            unreal.log_warning("帧率转换失败，使用默认30")
-            self.fps = "30"
-        try:
-            float(self.frame_start)
-        except Exception as e:
-            unreal.log_warning("起始帧转换失败，使用默认0")
-            self.frame_start = "0"
-        try:
-            float(self.frame_end)
-        except Exception as e:
-            unreal.log_warning("结束帧转换失败，使用默认100")
-            self.frame_end = "100"
+        self.fps = 30.0
+        self.frame_start = 0.0
+        self.frame_end = 100.0
     
     def frame_range(self):
         return [int(self.frame_start), int(self.frame_end)]
+
+@dataclass
+class CameraSetting:
+
+    focal_length: float = 0
+    sensor_width: float = 0
+    sensor_height: float = 0
+    projection_mode: unreal.CameraProjectionMode = unreal.CameraProjectionMode.PERSPECTIVE
+    gate_fit: Enum = auto
+
+
+class SyncCameraSetting:
+    ...
+    
+    def __init__(self, camera__root):
+        self.camera_root = camera__root
+    
+    def _get_camera_attr(self):
+        setting = CameraSetting()
+        camera_attr_obj = self.camera_root.GetNodeAttribute()
+        if camera_attr_obj.GetApertureMode() == fbx.FbxCamera.EApertureMode.eFocalLength:
+            focal_length = camera_attr_obj.FocalLength.Get()
+        else:
+            fov = camera_attr_obj.FieldOfView.Get()
+            focal_length = camera_attr_obj.ComputeFocalLength(fov)
+        setting.focal_length = focal_length
+        setting.sensor_width = camera_attr_obj.GetApertureWidth()
+        setting.sensor_height = camera_attr_obj.GetApertureHeight()
+        setting.projection_mode = unreal.CameraProjectionMode.PERSPECTIVE if camera_attr_obj.ProjectionType.Get() == fbx.FbxCamera.EProjectionType.ePerspective else \
+                                    unreal.CameraProjectionMode.ORTHOGRAPHIC
+        gate_fit = camera_attr_obj.GateFit.Get()
+        setting.gate_fit = gate_fit
+        return setting
+
+    @abc.abstractmethod
+    def parse(self, camera_root, res_width, res_height):
+        # 1080 1920  36 24 宽不变，高度变小（变化较小） 24 36 高度变小（变化较大）
+        setting = self._get_camera_attr()
+        scale = float(res_width) / float(res_height)
+        if setting.gate_fit == fbx.FbxCamera.EGateFit.eFitFill:
+            setting.sensor_height = setting.sensor_width / scale
+        elif setting.gate_fit == fbx.FbxCamera.EGateFit.eFitHorizontal:
+            ...
+
+
+class SyncMayaToUECameraSetting:
+
+    def parse(self, camera_root):
+        # UE and Maya use horizontal FOV
+        camera_attr_obj = camera_root.GetNodeAttribute()
+
 
 class UnrealInterface:
 
@@ -96,7 +189,7 @@ class UnrealSequenceInterface(UnrealInterface):
                 factory=unreal.LevelSequenceFactoryNew()
             )
         if settings:
-            sequence.set_display_rate(unreal.FrameRate(int(settings.fps),1))
+            sequence.set_display_rate(unreal.FrameRate(settings.fps,1))
             sequence.set_playback_start(int(settings.frame_start))
             sequence.set_playback_end(int(settings.frame_end))
         if create_camera:
@@ -104,7 +197,7 @@ class UnrealSequenceInterface(UnrealInterface):
         return sequence
 
     @add_logger
-    def create_camera_in_sequence(self, sequence: unreal.MovieSceneSequence, setting: SequenceSettings):
+    def create_camera_in_sequence(self, sequence: unreal.MovieSceneSequence, setting: SequenceSettings, camera_setting: CameraSetting = None):
         camera_actor: unreal.Actor = unreal.EditorLevelLibrary.spawn_actor_from_class(unreal.CineCameraActor, unreal.Vector.ZERO)
         camera_cut_track_list = sequence.find_tracks_by_type(unreal.MovieSceneCameraCutTrack)
         if not camera_cut_track_list:
@@ -144,6 +237,60 @@ class UnrealSequenceInterface(UnrealInterface):
                 break
             actor_binding_proxy.set_display_name(setting.camera_name)
         return [actor_binding_proxy, component_binding_proxy, section]
+    
+    @add_logger
+    def import_camera(self, camera_file, sequence: unreal.MovieSceneSequence, setting: SequenceSettings):
+
+        def get_camera_node(root_node):
+            for i in range(root_node.GetChildCount()):
+                child_node = root_node.GetChild(i)
+                node_type = child_node.GetNodeAttribute().GetAttributeType()
+                if node_type == fbx.FbxNodeAttribute.EType.eCamera:
+                    return child_node
+                
+        result = self.create_camera_in_sequence(sequence, setting)
+        world = unreal.EditorLevelLibrary.get_editor_world()
+        unreal.SequencerTools.import_level_sequence_fbx(world, sequence, [result[0]], self.__get_import_camera_setting(), camera_file)
+        try:
+            import fbx
+            import FbxCommon
+        except Exception as e:
+            raise ImportError("未找到FBX SDK")
+        manager, scene = FbxCommon.InitializeSdkObjects()
+        result = FbxCommon.LoadScene(manager, scene, camera_file)
+        root_node = scene.GetRootNode()
+        fbx_doc =scene.GetDocumentInfo()
+        soft_name = str(fbx_doc.LastSaved_ApplicationName.Get())
+        parse: SyncCameraSetting = None
+        if soft_name.lower() == "maya":
+            parse = SyncMayaToUECameraSetting()
+        if not parse:
+            raise Exception(f"不支持{soft_name}的摄像机文件")
+        camera_root = get_camera_node(root_node)
+        parse.parse(camera_root)
+        
+
+    def __get_import_camera_setting(self):
+        engine_version = unreal.SystemLibrary.get_engine_version()
+        import_setting = unreal.MovieSceneUserImportFBXSettings()
+        if engine_version.startswith('4.27'):
+            import_setting.set_editor_property('create_cameras', False)
+            import_setting.set_editor_property('force_front_x_axis', False)
+            import_setting.set_editor_property('match_by_name_only', False)
+            import_setting.set_editor_property('reduce_keys', False)
+            import_setting.set_editor_property('reduce_keys_tolerance', 0.001)
+            import_setting.set_editor_property('convert_scene_unit', False)
+            import_setting.set_editor_property('import_uniform_scale', 1.0)
+            import_setting.set_editor_property('replace_transform_track', False)
+        elif engine_version.startswith('5'): #UE5
+            import_setting.set_editor_property('create_cameras', False)
+            import_setting.set_editor_property('force_front_x_axis', False)
+            import_setting.set_editor_property('match_by_name_only', False)
+            import_setting.set_editor_property('reduce_keys', False)
+            import_setting.set_editor_property('reduce_keys_tolerance', 0.001)
+        else:
+            raise Exception("不支持的引擎版本")
+        return import_setting
 
     @add_logger
     def add_subsequence(self, parent_seq: unreal.MovieSceneSequence, children: List[unreal.MovieSceneSequence]):
