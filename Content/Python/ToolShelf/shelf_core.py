@@ -298,8 +298,10 @@ def check_status(message="发生错误，请查看日志"):
                 if not hasattr(instance, "logger"):
                     raise AttributeError("实例没有logger属性")
                 t_logger = unreal.resolve_python_object_handle(instance.logger)
+            elif hasattr(instance, "logger") and isinstance(instance.logger, ToolShelfLogger):
+                t_logger = instance.logger
             else:
-                raise TypeError("实例类型不正确，必须是StackWidgetHandle或unreal.Object的子类")
+                raise TypeError("实例类型不正确")
             t_logger.begin()
             try:
                 func(instance, *args, **kwargs)
@@ -307,9 +309,18 @@ def check_status(message="发生错误，请查看日志"):
                 t_logger.error(traceback.format_exc())
             t_logger.end()
             error_message = t_logger.get_section_log(logging.ERROR)
+            warning_message = t_logger.get_section_log(logging.WARNING)
             if error_message:
                 unreal.EditorDialog.show_message("错误", f"{message}\n{error_message}", unreal.AppMsgType.OK)
+            elif warning_message:
+                unreal.EditorDialog.show_message("成功", f"操作成功,但存在一些警告\n{warning_message}", unreal.AppMsgType.OK)
             else:
                 unreal.EditorDialog.show_message("成功", "操作成功", unreal.AppMsgType.OK)
         return wrapper2
     return wrapper
+
+
+class BaseInterface:
+
+    def __init__(self, logger: ToolShelfLogger):
+        self.logger = logger

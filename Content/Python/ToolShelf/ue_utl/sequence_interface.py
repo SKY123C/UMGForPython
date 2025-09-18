@@ -1,41 +1,16 @@
 import unreal
-import os
-import sys
 import logging
-import traceback
-from typing import List
-import abc
+from .utl_interface import add_logger, UnrealUTLInterface, UnrealInterface, actor_system
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import List
+import os
 try:
     import fbx
     import FbxCommon
-except Exception as e:
-    pass
+except ImportError:
+    unreal.log_warning("未安装fbx sdk，无法使用相机同步功能")
 
-CURRENT_LOGGER = None
-
-asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-asset_registry: unreal.AssetRegistry = unreal.AssetRegistryHelpers.get_asset_registry()
-actor_system: unreal.EditorActorSubsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-asset_system = unreal.get_editor_subsystem(unreal.AssetEditorSubsystem)
-
-
-def add_logger(func):
-    def wrapper2(*args, **kwargs):
-        instance = args[0]
-        result = None
-        try:
-            result = func(*args, **kwargs)
-        except Exception as e:
-            if instance.logger:
-                instance.logger.error(traceback.format_exc())
-            else:
-                raise e
-        return result
-    return wrapper2
-
-# property setter getter
 @dataclass
 class SequenceSettings:
 
@@ -95,7 +70,15 @@ class SequenceSettings:
         self.frame_end = 100.0
     
     def frame_range(self):
-        return [int(self.frame_start), int(self.frame_end)]
+        return [int(self.frame_start), int(self.frame_end)+1]
+
+
+@dataclass
+class ImportParams:
+    file_path: str = ""
+    dst_path: str = ""
+    skeleton_path: str = ""
+
 
 @dataclass
 class CameraSetting:
@@ -105,6 +88,8 @@ class CameraSetting:
     sensor_height: float = 0
     projection_mode: unreal.CameraProjectionMode = unreal.CameraProjectionMode.PERSPECTIVE
     gate_fit: Enum = auto
+    current_aperture: float = 0.0
+    constrain_aspect_ratio: bool = False
 
 
 class SyncCameraSetting:
@@ -130,7 +115,6 @@ class SyncCameraSetting:
         setting.gate_fit = gate_fit
         return setting
 
-    @abc.abstractmethod
     def parse(self, camera_root, res_width, res_height):
         # 1080 1920  36 24 宽不变，高度变小（变化较小） 24 36 高度变小（变化较大）
         setting = self._get_camera_attr()
@@ -138,7 +122,10 @@ class SyncCameraSetting:
         if setting.gate_fit == fbx.FbxCamera.EGateFit.eFitFill:
             setting.sensor_height = setting.sensor_width / scale
         elif setting.gate_fit == fbx.FbxCamera.EGateFit.eFitHorizontal:
+
+            
             ...
+        raise NotImplementedError()
 
 
 class SyncMayaToUECameraSetting:
@@ -146,26 +133,6 @@ class SyncMayaToUECameraSetting:
     def parse(self, camera_root):
         # UE and Maya use horizontal FOV
         camera_attr_obj = camera_root.GetNodeAttribute()
-
-
-class UnrealInterface:
-
-    def __init__(self, logger: logging.Logger = None):
-        self.logger = logger
-
-
-class UnrealUTLInterface(UnrealInterface):
-
-    @add_logger
-    def create_asset(self, path, name, asset_class, factory):
-        """
-        创建资产
-        """
-        if unreal.EditorAssetLibrary.does_asset_exist(f"{path}/{name}"):
-            unreal.log_warning(f"Asset {path}/{name} already exists.")
-            return None
-        return asset_tools.create_asset(name, path, asset_class, factory)
-
 
 class UnrealSequenceInterface(UnrealInterface):
 
@@ -191,7 +158,12 @@ class UnrealSequenceInterface(UnrealInterface):
         if settings:
             sequence.set_display_rate(unreal.FrameRate(settings.fps,1))
             sequence.set_playback_start(int(settings.frame_start))
-            sequence.set_playback_end(int(settings.frame_end))
+            sequence.set_playback_end(int(settings.frame_end)+1)
+            sequence.set_work_range_start((int(settings.frame_start) - 100)/settings.fps )
+            sequence.set_work_range_end((int(settings.frame_end) + 100)/settings.fps)
+            sequence.set_view_range_start((int(settings.frame_start) - 100)/settings.fps)
+            sequence.set_view_range_end((int(settings.frame_end) + 100)/settings.fps)
+
         if create_camera:
             self.create_camera_in_sequence(sequence, settings)
         return sequence
@@ -206,16 +178,16 @@ class UnrealSequenceInterface(UnrealInterface):
             camera_cut_track = camera_cut_track_list[0]
         cut_section_list = camera_cut_track.get_sections()
         if not cut_section_list:
-            section = camera_cut_track.add_section()
+            cut_section = camera_cut_track.add_section()
         else:
-            section = cut_section_list[0]
+            cut_section = cut_section_list[0]
         frame_range = setting.frame_range()
-        section.set_range(*frame_range)
+        cut_section.set_range(*frame_range)
         actor_binding_proxy = sequence.add_spawnable_from_instance(camera_actor)
         component_binding_proxy = sequence.add_possessable(camera_actor.camera_component)
         temp_proxy = component_binding_proxy.get_parent()
         binding_id = sequence.get_portable_binding_id(sequence, actor_binding_proxy)
-        section.set_camera_binding_id(binding_id)
+        cut_section.set_camera_binding_id(binding_id)
         component_binding_proxy.set_parent(actor_binding_proxy)
         temp_proxy.remove()
         track = actor_binding_proxy.add_track(unreal.MovieScene3DTransformTrack)
@@ -223,54 +195,73 @@ class UnrealSequenceInterface(UnrealInterface):
         section = track.add_section()
         section.set_end_frame_bounded(False)
         section.set_start_frame_bounded(False)
+
         actor_system.destroy_actor(camera_actor)
         if setting.camera_name:
             unreal.LevelSequenceEditorBlueprintLibrary.open_level_sequence(sequence)
             unreal.LevelSequenceEditorBlueprintLibrary.force_update()
-            binding_id = unreal.MovieSceneObjectBindingID()
-            binding_id.set_editor_property("guid", actor_binding_proxy.get_id())
+            #binding_id = unreal.MovieSceneObjectBindingID()
+            #binding_id.set_editor_property("guid", actor_binding_proxy.get_id())
             actor_list = unreal.LevelSequenceEditorBlueprintLibrary.get_bound_objects(binding_id)
             for i in actor_list:
                 if not unreal.MathLibrary.class_is_child_of(i.get_class(), unreal.Actor.static_class()):
                     continue
+                self.set_camera_setting(i, camera_setting)
                 i.set_actor_label(setting.camera_name)
                 break
             actor_binding_proxy.set_display_name(setting.camera_name)
-        return [actor_binding_proxy, component_binding_proxy, section]
+            
+        return [actor_binding_proxy, component_binding_proxy, cut_section]
     
     @add_logger
-    def import_camera(self, camera_file, sequence: unreal.MovieSceneSequence, setting: SequenceSettings):
+    def set_camera_setting(self, camera_actor: unreal.CineCameraActor, camera_setting: CameraSetting):
+        if not camera_setting:
+            return
+        component: unreal.CineCameraComponent = camera_actor.get_editor_property("camera_component")
+        if not component:
+            #seq_name = str(actor_binding_proxy.sequence.get_name())
+            #raise ValueError(f"{seq_name}: 未找到摄像机组件")
+            ...
 
-        def get_camera_node(root_node):
-            for i in range(root_node.GetChildCount()):
-                child_node = root_node.GetChild(i)
-                node_type = child_node.GetNodeAttribute().GetAttributeType()
-                if node_type == fbx.FbxNodeAttribute.EType.eCamera:
-                    return child_node
-                
-        result = self.create_camera_in_sequence(sequence, setting)
-        world = unreal.EditorLevelLibrary.get_editor_world()
-        unreal.SequencerTools.import_level_sequence_fbx(world, sequence, [result[0]], self.__get_import_camera_setting(), camera_file)
-        try:
-            import fbx
-            import FbxCommon
-        except Exception as e:
-            raise ImportError("未找到FBX SDK")
-        manager, scene = FbxCommon.InitializeSdkObjects()
-        result = FbxCommon.LoadScene(manager, scene, camera_file)
-        root_node = scene.GetRootNode()
-        fbx_doc =scene.GetDocumentInfo()
-        soft_name = str(fbx_doc.LastSaved_ApplicationName.Get())
-        parse: SyncCameraSetting = None
-        if soft_name.lower() == "maya":
-            parse = SyncMayaToUECameraSetting()
-        if not parse:
-            raise Exception(f"不支持{soft_name}的摄像机文件")
-        camera_root = get_camera_node(root_node)
-        parse.parse(camera_root)
-        
+        # if unreal.LevelSequenceEditorBlueprintLibrary.get_current_level_sequence() == actor_binding_proxy.sequence:
+        #     unreal.LevelSequenceEditorBlueprintLibrary.close_level_sequence()
+        #     has_opend = True
+        film_back = component.get_editor_property("filmback")
+        film_back.set_editor_property("sensor_width", camera_setting.sensor_width)
+        film_back.set_editor_property("sensor_height", camera_setting.sensor_height)
+        component.set_editor_property("filmback", film_back)
+        component.set_editor_property("current_focal_length", camera_setting.focal_length)
+        component.set_editor_property("current_aperture", camera_setting.current_aperture)
+        component.set_editor_property("constrain_aspect_ratio", camera_setting.constrain_aspect_ratio)
+        # if has_opend:
+        #     unreal.LevelSequenceEditorBlueprintLibrary.open_level_sequence(actor_binding_proxy.sequence)
 
+    @add_logger
+    def import_camera(self, camera_file, sequence: unreal.MovieSceneSequence, camera_binding):
+        if not camera_file or not os.path.exists(camera_file):
+            self.logger.warning(f"{sequence.get_name()}: 摄像机文件不存在 {camera_file}")
+            return
+        unreal_editor_system: unreal.UnrealEditorSubsystem = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+        cam_import_setting = self.__get_import_camera_setting()
+        unreal.SequencerTools.import_level_sequence_fbx(unreal_editor_system.get_editor_world(), 
+                                                        sequence, 
+                                                        [camera_binding],
+                                                        cam_import_setting,
+                                                        camera_file)
+        #unreal.LevelSequenceEditorBlueprintLibrary.open_level_sequence(sequence)
+        if unreal.LevelSequenceEditorBlueprintLibrary.get_current_level_sequence() == sequence:
+            unreal.LevelSequenceEditorBlueprintLibrary.close_level_sequence()
+        i = camera_binding.get_object_template()
+        if not i:
+            self.logger.error(f"{sequence.get_name()}: 未找到摄像机模板对象")
+            return
+        tags: unreal.Array = i.get_editor_property("tags")
+        tags.append(unreal.Name(camera_file))
+        i.set_editor_property("tags", tags)
+        unreal.LevelSequenceEditorBlueprintLibrary.force_update()
+    
     def __get_import_camera_setting(self):
+        unreal.MovieSceneCameraCutSection
         engine_version = unreal.SystemLibrary.get_engine_version()
         import_setting = unreal.MovieSceneUserImportFBXSettings()
         if engine_version.startswith('4.27'):
@@ -299,6 +290,7 @@ class UnrealSequenceInterface(UnrealInterface):
             track.set_display_name(i.get_name())
             section: unreal.MovieSceneSubSection = track.add_section()
             section.set_sequence(i)
+            #section.set_range(i.get_playback_start(), i.get_playback_end())
             section.set_range(0, i.get_playback_end() - i.get_playback_start())
     
     @add_logger
@@ -340,3 +332,36 @@ class UnrealSequenceInterface(UnrealInterface):
                                                                             unreal.Rotator(0, 0, 0))
         
         return temp_spawn_actor
+    
+    @add_logger
+    def set_sequence_setting(self, sequence: unreal.MovieSceneSequence, settings: SequenceSettings):
+        if not settings:
+            return
+        rate = sequence.get_display_rate()
+        if float(rate.numerator / rate.denominator) != settings.fps:
+            sequence.set_display_rate(unreal.FrameRate(settings.fps,1))
+        if sequence.get_playback_start() != int(settings.frame_start):
+            sequence.set_playback_start(int(settings.frame_start))
+        if sequence.get_playback_end() != int(settings.frame_end)+1:
+            sequence.set_playback_end(int(settings.frame_end)+1)
+    
+    @add_logger
+    def set_section_range(self, section: unreal.MovieSceneSection, start, end):
+        end = int(end)+1
+        if section.get_start_frame() != int(start):
+            section.set_start_frame(int(start))
+        if section.get_end_frame() != end:
+            section.set_end_frame(end)
+
+    @add_logger
+    def set_sequence_playback(self, sequence: unreal.MovieSceneSequence, start, end):
+        end = int(end)+1
+        if sequence.get_playback_start() != int(start):
+            sequence.set_playback_start(int(start))
+        if sequence.get_playback_end() != end:
+            sequence.set_playback_end(end)
+        fps = sequence.get_display_rate().numerator / sequence.get_display_rate().denominator
+        sequence.set_work_range_start((int(start) - 100)/fps )
+        sequence.set_work_range_end((int(end) + 100)/fps)
+        sequence.set_view_range_start((int(start) - 100)/fps)
+        sequence.set_view_range_end((int(end) + 100)/fps)
