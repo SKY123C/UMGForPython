@@ -55,8 +55,8 @@ class ToolShelfLogger:
         logger_handle.setFormatter(formatter)
         logger_handle.setStream(self)
 
-        temp_dir = tempfile.gettempdir()
-        log_path = os.path.join(temp_dir, "ToolShelf")
+        temp_dir = os.path.join(os.path.dirname(__file__), "logs")
+        log_path = temp_dir
         if not os.path.exists(log_path):
             os.mkdir(log_path)
         log_name = os.path.join(log_path, f"{self._logger.name}.log")
@@ -129,6 +129,7 @@ class BaseHandle:
     support_tool = []
     padding = [0,0,0,0]
     order = 0
+    valid = True
     
     def __init__(self, handle_id=""):
         self._root_widget = None

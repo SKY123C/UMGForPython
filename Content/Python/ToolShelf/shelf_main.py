@@ -87,6 +87,8 @@ class StackedWidgetHandle:
             scroll_box, layout = self.create_container_child()
             self.container_widget.add_child(scroll_box)
             for handle_class in self._handle_list:
+                if not handle_class.valid:
+                    continue
                 if i.entity_id in handle_class.support_tool:
                     handle_ins = None
                     try:

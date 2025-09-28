@@ -42,6 +42,7 @@ class AnimInterface(UnrealInterface):
                 temp.skeleton_path = skeleton_path
                 import_param_list.append(temp)
         return self.import_animation_file(import_param_list)
+    
     @add_logger
     def import_animation_file(self, import_param_list: List[ImportParams]) -> List[unreal.AnimSequence]:
         if useful_interchanged():
@@ -55,7 +56,6 @@ class AnimInterface(UnrealInterface):
         for i in import_param_list:
             task = self.__create_animation_task(*astuple(i))
             task_list.append(task)
-        print(len(task_list))
         if task_list: asset_tools.import_asset_tasks(task_list)
         animation_list = []
         for i in task_list: animation_list.extend(i.get_editor_property("imported_object_paths"))

@@ -39,3 +39,22 @@ class UnrealUTLInterface(UnrealInterface):
             unreal.log_warning(f"Asset {path}/{name} already exists.")
             return None
         return asset_tools.create_asset(name, path, asset_class, factory)
+    
+    @add_logger
+    def get_asset_by_path(self, path, recursive=False, alllow_class_list=None):
+        """
+        通过路径获取资产
+        """
+        if not unreal.EditorAssetLibrary.does_directory_exist(path):
+            return []
+
+        asset_data_list = asset_registry.get_assets_by_path(path, recursive=recursive)
+        if not asset_data_list:
+            return []
+        result = []
+        for i in asset_data_list:
+            if alllow_class_list and i.get_class() in alllow_class_list:
+                result.append(i.get_asset())
+            elif not alllow_class_list:
+                result.append(i.get_asset())
+        return result
