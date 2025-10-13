@@ -6,21 +6,14 @@ import unreal
 import sys
 import traceback
 
-logger_output = None
 root_logger = logging.getLogger("ToolShelf")
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-log_id_map = {}
+asset_registry: unreal.AssetRegistry = unreal.AssetRegistryHelpers.get_asset_registry()
 
-logger_list = [
-    
-]
-
-
-def set_logger_output(i):
-    global logger_output
-    logger_output = i
-    
+if unreal.SystemLibrary.get_engine_version().startswith("4"):
+    asset_system = unreal.EditorAssetLibrary
+else:
+    asset_system = unreal.get_editor_subsystem(unreal.AssetEditorSubsystem)
     
 def register_all_stack_handle(reload=False):
     def check_py(in_path: pathlib.Path):
@@ -36,7 +29,7 @@ def register_all_stack_handle(reload=False):
                 module_obj = importlib.import_module(f".{shelf_name}.{x.stem}", root)
         except Exception as e:
             unreal.log_error(traceback.format_exc())
-            
+
         if reload and module_obj:
             importlib.reload(module_obj)
 
@@ -47,10 +40,13 @@ def get_is_debug():
         result = False if os.environ.get("tw_debug") == "False" else True
     return result
 
-
-def create_logger(logger_name):
-    custom_logger = logging.getLogger(logger_name)
-    logger_list.append(custom_logger)
+def useful_interchanged():
+    result = False
+    try:
+        result = unreal.SystemLibrary.get_console_variable_bool_value('Interchange.FeatureFlags.Import.FBX')
+    except Exception as e:
+        ...
+    return result
 
 def extend_python_path():
     sys.path.append(os.path.join(os.path.dirname(__file__), "site-packages"))

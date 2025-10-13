@@ -1,0 +1,7 @@
+[path]
+# if none, root is current directory where the project directory is located
+root = ""
+[site-packages]
+# root.start is start script path
+root.start = "TA"
+root.lib= "TA/Python/site-packages"
