@@ -5,9 +5,10 @@ import logging
 import logging.handlers
 import abc
 from enum import Enum
-import traceback
-from typing import Union
 import tempfile
+from typing import Union
+import traceback
+from . import shelf_utl
 
 
 @unreal.uclass()
@@ -39,6 +40,13 @@ class ToolShelfLogger:
     @staticmethod
     def set_default_output(logger_output):
         ToolShelfLogger.default_output = logger_output
+    
+    def __enter__(self):
+        self.begin()
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end()
 
     def __init__(self, name, out_object):
         self._logger = logging.getLogger(name)
@@ -54,7 +62,6 @@ class ToolShelfLogger:
         self.warning_str= ""
         logger_handle.setFormatter(formatter)
         logger_handle.setStream(self)
-
         temp_dir = os.path.join(os.path.dirname(__file__), "logs")
         log_path = temp_dir
         if not os.path.exists(log_path):
@@ -67,7 +74,7 @@ class ToolShelfLogger:
                                             datefmt='%a, %d %b %Y %H:%M:%S')
         fh.setLevel(logging.INFO)
         fh.setFormatter(formatter)
-
+    
         self._logger.addHandler(fh)
         self._logger.addHandler(logger_handle)
         self.out_object = out_object
@@ -79,6 +86,7 @@ class ToolShelfLogger:
     def get_log_path(self):
         temp_dir = tempfile.gettempdir()
         log_path = os.path.join(temp_dir, "ToolShelf")
+        
         return os.path.join(log_path, f"{self._logger.name}.log")
     
     def begin(self):
@@ -114,7 +122,7 @@ class ToolShelfLogger:
         if self.out_object:
             for i in text.split("\n"):
                 self.out_object.write(log_type, i)
-        
+
     def get_section_log(self, log_type):
         result = None
         if log_type == logging.WARNING:
@@ -122,15 +130,27 @@ class ToolShelfLogger:
         elif log_type == logging.ERROR:
             result = self.__tmp_error_str
         return result
+
+    def error(self, msg, *args, **kwargs):
+        self.logger.error(msg, *args, **kwargs)
+    
+    def warning(self, msg, *args, **kwargs):
+        self.logger.warning(msg, *args, **kwargs)
+    
+    def info(self, msg, *args, **kwargs):
+        self.logger.info(msg, *args, **kwargs)
+
+    def debug(self, msg, *args, **kwargs):
+        self.logger.debug(msg, *args, **kwargs)
         
-        
+
 class BaseHandle:
     
     support_tool = []
     padding = [0,0,0,0]
     order = 0
     valid = True
-    
+
     def __init__(self, handle_id=""):
         self._root_widget = None
         self._handle_id = handle_id if handle_id else type(self).__name__
@@ -161,6 +181,9 @@ class BaseHandle:
     @abc.abstractmethod
     def setup(self):
         ...
+    
+    def release_reference(self):
+        ...
 
 
 class SideEntity:
@@ -183,7 +206,7 @@ class StackWidgetHandle(BaseHandle):
         
     def get_handle_id(self):
         return self._handle_id
-    ...
+
     def on_active_changed(self, in_entity: SideEntity, **kwargs):
         ...
     
@@ -288,6 +311,21 @@ def create_side_button_with_text(text="", tool_tip="", icon_path="", button_type
     button.set_tool_tip_text(tool_tip)
     return button
 
+
+@unreal.uclass()
+class LoggerUObject(unreal.Object):
+
+    logger = unreal.uproperty(unreal.PythonObjectHandle)
+
+    def set_logger(self, logger: ToolShelfLogger):
+        """
+        设置日志记录器
+        """
+        self.logger = unreal.create_python_object_handle(logger)
+        print("设置日志记录器")
+        print(self.logger)
+        print(unreal.resolve_python_object_handle(self.logger))
+
 def check_status(message="发生错误，请查看日志"):
     def wrapper(func):
         def wrapper2(instance: Union[StackWidgetHandle, unreal.Object], *args, **kwargs):
@@ -319,6 +357,48 @@ def check_status(message="发生错误，请查看日志"):
                 unreal.EditorDialog.show_message("成功", "操作成功", unreal.AppMsgType.OK)
         return wrapper2
     return wrapper
+
+class ThreadCategory(Enum):
+    
+    GAMETHREAD = 0
+    CURRENTTHREAD = 0
+
+
+class ToolShelfSignalInstance:
+    
+    def __init__(self):
+        self.__func_list = []
+    
+    def connect(self, func, thread_category=ThreadCategory.GAMETHREAD):
+        result = (func, thread_category)
+        self.__func_list.append(result)
+    
+    def disconnect(self, func):
+        ...
+    
+    def disconnect_all(self):
+        self.__func_list.clear()
+    
+    def a(self,*args):
+        ...
+        
+    def emit(self, *args):
+        for func_tuple in self.__func_list:
+            func = func_tuple[0]
+            thread_category = func_tuple[1]
+            if thread_category == ThreadCategory.GAMETHREAD:
+                unreal.executeInMainThreadWithResult(func, *args)
+            else:
+                func(*args)
+
+
+class ToolShelfSignal:
+    
+    def __init__(self, args_type=None):
+        self.__signal_instance = ToolShelfSignalInstance()
+    
+    def __get__(self, obj: object, ower: object):
+        return self.__signal_instance
 
 
 class BaseInterface:

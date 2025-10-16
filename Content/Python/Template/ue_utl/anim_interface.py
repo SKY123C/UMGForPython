@@ -25,6 +25,23 @@ def useful_interchanged():
     return result
 
 
+class InterchangdScope:
+    def __enter__(self):
+        self.old_value = useful_interchanged()
+        try:
+            unreal.SystemLibrary.execute_console_command(None, 'Interchange.FeatureFlags.Import.FBX 0')
+        except Exception as e:
+            ...
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            unreal.SystemLibrary.execute_console_command(None, f'Interchange.FeatureFlags.Import.FBX {self.old_value}')
+        except Exception as e:
+            ...
+        self.old_value = None
+
+
 class AnimInterface(UnrealInterface):
 
     def __init__(self, logger: logging.Logger = None):
