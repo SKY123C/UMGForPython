@@ -3,6 +3,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/Widget.h"
 #include "UMG.h"
+#include "python.h"
 #include "EditorWidgetExtension.generated.h"
 
 UCLASS()
@@ -54,8 +55,5 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "PythonUMGLib")
 	static void GetBrush(FSlateBrush& Brush, FString Style, FString BrushNmae);
-
-	UFUNCTION(BlueprintCallable, Category = "PythonUMGLib")
-	static void CallFuncByAddress(FString Address);
 
 };

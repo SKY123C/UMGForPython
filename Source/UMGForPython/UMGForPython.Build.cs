@@ -12,13 +12,14 @@ public class UMGForPython : ModuleRules
         PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
-			}
+				Path.Combine(EngineDir, @"Plugins\Experimental\PythonScriptPlugin\Source\PythonScriptPlugin\Private")
+            }
 			);
 
 
         PrivateIncludePaths.AddRange(
             new string[] {
-                
+
             });
 
 

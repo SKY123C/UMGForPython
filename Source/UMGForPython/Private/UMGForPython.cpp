@@ -1,11 +1,40 @@
 ﻿// Copyright Epic Games, Inc. All Rights Reserved.
 #include "UMGForPython.h"
-#include "Python.h"
 #include "Async/Async.h"
 #include "pystate.h"
 #include "Interfaces/IPluginManager.h"
 #include "Styling/SlateStyleRegistry.h"
+#include "Modules/ModuleManager.h"
+#include "PyWrapperObject.h"
+#include "PyPtr.h"
+#include "PyWrapperTypeRegistry.h"
+#include <Windows.h>
 #define LOCTEXT_NAMESPACE "FUMGForPythonModule"
+
+void CustomFunc(UObject* self, FPropertyChangedEvent& PropertyChangedEvent)
+{
+    UE_LOG(LogTemp, Display, TEXT("PrintVirtual Called on %s"), *self->GetName());
+    UE_LOG(LogTemp, Display, TEXT("Property Name %s"), *PropertyChangedEvent.GetPropertyName().ToString());
+    FUMGForPythonModule& Module = FModuleManager::Get().LoadModuleChecked<FUMGForPythonModule>("UMGForPython");
+    TArray<void*> Array = Module.GetOriginalFunction(self);
+	FUNC OriginalFunc = (FUNC)Array[0];
+	PyObject* Args = (PyObject*)Array[1];
+    char* PropertyName = TCHAR_TO_ANSI(*PropertyChangedEvent.GetPropertyName().ToString());
+    if (OriginalFunc)
+        OriginalFunc(self, PropertyChangedEvent);
+	if (Args)
+    {
+		
+        PyObject* PyPropertyName = PyUnicode_FromString(PropertyName);
+        PyGILState_STATE State = PyGILState_Ensure();
+        PyObject* HookMethod = PyTuple_GET_ITEM(Args, 1);
+        PyObject* OutArgs = PyTuple_New(2);
+        PyTuple_SetItem(OutArgs, 0, PyTuple_GET_ITEM(Args, 0));
+        PyTuple_SetItem(OutArgs, 1, PyPropertyName);
+        PyObject_Call(HookMethod, OutArgs, nullptr);
+        PyGILState_Release(State);
+	}
+}
 
 static PyObject* CallFunc(PyObject* InArgs, PyObject* InKwargs)
 {
@@ -37,13 +66,13 @@ static PyObject* ExecuteInMainThreadWithResult(PyObject* ModuleSelf, PyObject* I
     {
         Py_BEGIN_ALLOW_THREADS
             FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([=, &Result]()
-                {
-                    //PyEval_InitThreads();
-                    PyGILState_STATE State = PyGILState_Ensure();
-                    Result = CallFunc(InArgs, InKwargs);
-                    PyGILState_Release(State);
+        {
+            //PyEval_InitThreads();
+            PyGILState_STATE State = PyGILState_Ensure();
+            Result = CallFunc(InArgs, InKwargs);
+            PyGILState_Release(State);
 
-                }, TStatId(), NULL, ENamedThreads::GameThread);
+        }, TStatId(), NULL, ENamedThreads::GameThread);
 
         FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);
         Py_END_ALLOW_THREADS
@@ -55,11 +84,20 @@ static PyObject* ExecuteInMainThreadWithResult(PyObject* ModuleSelf, PyObject* I
     return Result;
 }
 
+static PyObject* AddPropertyEventHook(PyObject* ModuleSelf, PyObject* InArgs, PyObject* InKwargs)
+{
+    PyObject* PyObj = PyTuple_GET_ITEM(InArgs, 0);
+    FPyWrapperObject* PyWrappedObj = (FPyWrapperObject*)PyObj;
+    FUMGForPythonModule& Module = FModuleManager::Get().LoadModuleChecked<FUMGForPythonModule>("UMGForPython");
+    Py_NewRef(InArgs);
+	Module.AddPropertyEventHook(PyWrappedObj->ObjectInstance, InArgs);
+    return Py_None;
+}
 PyMethodDef PyhonExtendsion[] = {
     { "executeInMainThreadWithResult", (PyCFunction)(void*)(&ExecuteInMainThreadWithResult), METH_VARARGS | METH_KEYWORDS, ""},
+    { "add_property_event_hook", (PyCFunction)(void*)(&AddPropertyEventHook), METH_VARARGS | METH_KEYWORDS, ""},
     { nullptr, nullptr, 0, nullptr }
 };
-
 
 void FUMGForPythonModule::StartupModule()
 {
@@ -77,6 +115,65 @@ void FUMGForPythonModule::StartupModule()
 void FUMGForPythonModule::ShutdownModule()
 {
     UnregisterStyle();
+}
+
+void FUMGForPythonModule::AddPropertyEventHook(UObject* InObject, PyObject* InPyObject)
+{
+    RemovePropertyEventHook(InObject);
+    auto* vptr = *(void***)InObject;
+    FUNC OriginalFunc = (FUNC)vptr[39];
+    ReplaceFunc(InObject, (void*)&CustomFunc);
+    TArray<void*> Array;
+    Array.Reset();
+	Array.Add(OriginalFunc);
+	Array.Add(InPyObject);
+	TWeakObjectPtr WeakPtr(InObject);
+    TMap<TWeakObjectPtr<UObject>, TArray<void*>> SaveMap;
+    SaveMap.Add(WeakPtr, Array);
+    PointerMapArray.Add(SaveMap);
+}
+
+void FUMGForPythonModule::RemovePropertyEventHook(UObject* InObject)
+{
+    for (int32 i = PointerMapArray.Num() - 1; i >= 0; --i)
+    {
+        TMap<TWeakObjectPtr<UObject>, TArray<void*>>& Map = PointerMapArray[i];
+        for (auto It = Map.CreateConstIterator(); It; ++It)
+        {
+
+            PyObject* PyObjectPtr = (PyObject*)It->Value[1];
+            if (!It->Key.IsValid())
+            {
+                Py_DECREF(PyObjectPtr);
+                PointerMapArray.RemoveAt(i);
+            }
+            else
+            {
+                if (It->Key.Pin().Get() == InObject)
+                {
+                    ReplaceFunc(InObject, It->Value[0]);
+                    Py_DECREF(PyObjectPtr);
+                    PointerMapArray.RemoveAt(i);
+                }
+            }
+        }
+    }
+}
+
+TArray<void*> FUMGForPythonModule::GetOriginalFunction(UObject* InObject)
+{
+    for(auto& map : PointerMapArray)
+    {
+        for (auto& Item : map)
+        {
+            if (Item.Key.IsValid() && Item.Key.Pin().Get() == InObject)
+               {
+                FUNC func = FUNC(Item.Value[0]);
+                return Item.Value;
+			}
+        }
+	}
+    return TArray<void*>();
 }
 
 void FUMGForPythonModule::RegisterStyle()
@@ -104,6 +201,17 @@ void FUMGForPythonModule::UnregisterStyle()
     StyleInstance.Reset();
 }
 
+void FUMGForPythonModule::ReplaceFunc(UObject* InObject, void* Ptr)
+{
+    auto* vptr = *(void***)InObject;
+    DWORD old;
+    FUNC OriginalFunc = (FUNC)vptr[39];
+    VirtualProtect(&vptr[39], sizeof(void*), PAGE_EXECUTE_READWRITE, &old);
+    vptr[39] = Ptr;
+    VirtualProtect(&vptr[39], sizeof(void*), old, &old);
+}
+
 #undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FUMGForPythonModule, UMGForPython)
+
