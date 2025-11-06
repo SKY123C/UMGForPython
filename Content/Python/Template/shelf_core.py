@@ -8,7 +8,6 @@ from enum import Enum
 import tempfile
 from typing import Union
 import traceback
-from . import shelf_utl
 
 
 @unreal.uclass()
@@ -17,6 +16,11 @@ class CGTeamWorkFbxImportOptions(unreal.Object):
     skeleton = unreal.uproperty(unreal.Skeleton, meta={"DisplayName": "骨 骼", "Category": "参 数"})
     out_directory = unreal.uproperty(unreal.DirectoryPath, meta={"DisplayName": "目标路径", "ContentDir": "", "Category": "参 数"})
     in_directory = unreal.uproperty(unreal.DirectoryPath, meta={"DisplayName": "Fbx文件夹路径", "RelativePath": "", "BlueprintReadOnly": "", "Category": "参 数"})
+
+
+class HandleType(Enum):
+    WIDGET = 0
+    COMMAND = 1
 
 
 class ToolShelfLogger:
@@ -142,7 +146,7 @@ class ToolShelfLogger:
 
     def debug(self, msg, *args, **kwargs):
         self.logger.debug(msg, *args, **kwargs)
-        
+
 
 class BaseHandle:
     
@@ -150,13 +154,13 @@ class BaseHandle:
     padding = [0,0,0,0]
     order = 0
     valid = True
+    handle_type = HandleType.WIDGET
 
     def __init__(self, handle_id=""):
         self._root_widget = None
         self._handle_id = handle_id if handle_id else type(self).__name__
         self.__logger: ToolShelfLogger = None
         self.__create_logger()
-        self.setup()
     
     def __create_logger(self):
         self.__logger = ToolShelfLogger.create_logger(type(self).__name__)
@@ -184,6 +188,9 @@ class BaseHandle:
     
     def release_reference(self):
         ...
+    
+    def set_root_widget(self, widget: unreal.Widget):
+        self._root_widget = widget
 
 
 class SideEntity:
@@ -201,7 +208,7 @@ class StackWidgetHandle(BaseHandle):
     fill = False
     
     def __init__(self, entity: SideEntity, handle_id=""):
-        self.entity = entity
+        self.entity = [entity]
         super().__init__(handle_id)
         
     def get_handle_id(self):
@@ -213,7 +220,8 @@ class StackWidgetHandle(BaseHandle):
     def get_logger(self):
         
         ...
-
+    def append_entity(self, entity: SideEntity):
+        self.entity.append(entity)
         
 class Utl:
     
@@ -405,3 +413,6 @@ class BaseInterface:
 
     def __init__(self, logger: ToolShelfLogger):
         self.logger = logger
+
+
+UMGWIDGET = None

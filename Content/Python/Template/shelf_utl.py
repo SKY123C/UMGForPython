@@ -3,8 +3,11 @@ import pathlib
 import importlib
 import os
 import unreal
+import mimetypes
+import requests
 import sys
 import traceback
+from . import shelf_core
 
 root_logger = logging.getLogger("ToolShelf")
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -48,14 +51,17 @@ def useful_interchanged():
         ...
     return result
 
+
+def send_log_to_confluence(token="", page_id="", file_name="", comment=""):
+    ...
+
 def extend_python_path():
     sys.path.append(os.path.join(os.path.dirname(__file__), "site-packages"))
 
-def write(log_id, log_type, text):
-    ...
-'''
-    being
 
-    end
 
-'''
+def find_handle(handle_name):
+    for i in shelf_core.UMGWIDGET.iter_handle():
+        if i.__class__.__name__ == handle_name:
+            return i
+    return

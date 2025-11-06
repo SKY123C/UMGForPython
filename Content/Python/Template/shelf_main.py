@@ -1,12 +1,12 @@
 import unreal
 from . import shelf_core
 import traceback
-import gc
+from typing import List
 
 
 class StackedWidgetHandle:
     
-    def __init__(self, entity_list: list[shelf_core.SideEntity], side_color):
+    def __init__(self, entity_list: List[shelf_core.SideEntity], side_color):
         ...
         self.side_size = unreal.Vector2D()
         self.side_size.x = 40
@@ -16,10 +16,9 @@ class StackedWidgetHandle:
         self.entity_list = entity_list
         self.side_button_size = 40
         self.side_color: unreal.LinearColor = side_color
-        self._handle_list: list[shelf_core.StackWidgetHandle] = []
-        self._handle_instance_list: list[shelf_core.StackWidgetHandle] = []
+        self._handle_list: List[shelf_core.StackWidgetHandle] = []
+        self.handle_instance_list: List[shelf_core.StackWidgetHandle] = []
         self.register_handles()
-        self.setup()
     
     def setup(self):
         self.container_widget = unreal.WidgetSwitcher()
@@ -39,7 +38,7 @@ class StackedWidgetHandle:
         
         slot = h_layout.add_child_to_horizontal_box(self.container_widget)
         slot.size.size_rule = unreal.SlateSizeRule.FILL
-        scroll = unreal.EditorUtilityScrollBox()
+        scroll = unreal.ScrollBox()
         
         self.tool_size_box.add_child(self.side_border)
         slot = self.side_border.add_child(scroll)
@@ -53,7 +52,7 @@ class StackedWidgetHandle:
         #slot.size.size_rule = unreal.SlateSizeRule.FILL
                 
         slot: unreal.ScrollBoxSlot = scroll.add_child(self.tool_main_v_box)
-        self.button_list: list[dict] = []
+        self.button_list: List[dict] = []
         self.add_utl()
         self.add_tool_box()
     
@@ -76,7 +75,8 @@ class StackedWidgetHandle:
         return self.main_layout
     
     def add_tool_box(self):
-                
+        handle_ins_list = []
+        layout_map = {}
         for i in self.entity_list:
             button = shelf_core.create_side_button_with_text(i.display_name, i.tool_tip, i.icon_path, unreal.CheckBox.static_class())
             button.set_is_checked(self.default_is_checked(i.display_name))
@@ -85,37 +85,56 @@ class StackedWidgetHandle:
             button.on_check_state_changed.add_callable(wrapper)
             #tw_animation_widget.AnimationToolHandle().export_widget()
             scroll_box, layout = self.create_container_child()
-            self.container_widget.add_child(scroll_box)
-            for handle_class in self._handle_list:
+            slot = self.container_widget.add_child(scroll_box)
+            for handle_class in shelf_core.StackWidgetHandle.__subclasses__():
                 if not handle_class.valid:
                     continue
                 if i.entity_id in handle_class.support_tool:
-                    handle_ins = None
+                    
                     try:
-                        if handle_class.instance:
-                            result = [j for j in self._handle_instance_list if isinstance(j, handle_class)]
-                            handle_ins = result[0] if result else None
+                        for handle_ins in handle_ins_list:
+                            if isinstance(handle_ins, handle_class):
+                                handle_ins.add_entity(i)
+                                break
                         else:
                             handle_ins = handle_class(i)
-                        if not handle_ins:
-                            raise
-                        widget = handle_ins.export_widget()
+                            handle_ins_list.append(handle_ins)
+
                     except Exception as e:
-                        widget = unreal.TextBlock()
-                        widget.font.size = 10
-                        #widget.set_is_read_only(True)
-                        widget.set_text("加载失败\n" + traceback.format_exc())
-                    if handle_ins:self._handle_instance_list.append(handle_ins)
-                    slot: unreal.VerticalBoxSlot = layout.add_child_to_vertical_box(widget)
-                    if handle_ins:
-                        if handle_ins.fill:
-                            slot.size.size_rule = unreal.SlateSizeRule.FILL
-                        slot.set_padding(handle_ins.padding)
-                    
+                        unreal.log_error(traceback.format_exc())
             size_box = shelf_core.create_size_wrapper(button)
             size_box.set_width_override(self.side_button_size)
             size_box.set_height_override(self.side_button_size)
             self.tool_side_layout.add_child(size_box)
+            layout_map[i.entity_id] = layout
+        for handle_class in shelf_core.StackWidgetHandle.__subclasses__():
+            if handle_class.handle_type == shelf_core.HandleType.COMMAND and handle_class.valid:
+                handle_ins_list.append(handle_class(None))
+        handle_ins_list.sort(key=lambda x: x.order)
+        self.handle_instance_list = handle_ins_list
+        for i in self.handle_instance_list:
+            i.setup()
+
+        for entity_id, layout in layout_map.items():
+            for handle_ins in self.handle_instance_list:
+                if entity_id not in handle_ins.support_tool:
+                    continue
+                try:
+                    if handle_ins.handle_type == shelf_core.HandleType.WIDGET:
+                        widget = handle_ins.export_widget()
+                    ...
+                except Exception as e:
+                    widget = unreal.TextBlock()
+                    widget.font.size = 10
+                    #widget.set_is_read_only(True)
+                    widget.set_text("加载失败\n" + traceback.format_exc())
+                    ...
+                if widget:
+                    slot: unreal.VerticalBoxSlot = layout.add_child_to_vertical_box(widget)
+                    slot.set_padding(unreal.Margin(20, 50, 50, 20))
+                    slot.set_padding(unreal.Margin(*handle_ins.padding))
+                    if handle_ins.fill:
+                        slot.size.size_rule = unreal.SlateSizeRule.FILL
     
     def add_utl(self):
         self.home_button = shelf_core.create_side_button_with_text(icon_path=shelf_core.Utl.get_full_icon_path("home.png"), button_type=unreal.CheckBox.static_class(), display=False)
@@ -150,7 +169,7 @@ class StackedWidgetHandle:
                         self.update_container_vis(index)
                         break
             a = [index for index, i in enumerate(self.button_list) for j, button in i.items() if button.is_checked()]
-            for i in self._handle_instance_list:
+            for i in self.handle_instance_list:
                 i.on_active_changed(in_checkbox_id)
             self.update_container_vis(a[0])
         return wrapper
@@ -158,51 +177,53 @@ class StackedWidgetHandle:
     def default_is_checked(self, name):
         return True if name == "动画" else False
             
-    def create_container_child(self):
-        scroll_box = unreal.EditorUtilityScrollBox()
+    def create_container_child(self, fill=False):
+        scroll_box = unreal.ScrollBox()
         border = unreal.Border()
         border.set_brush_color(unreal.LinearColor(4/255, 4/255, 4/255, 1))
         layout = unreal.VerticalBox()
-        border.set_content(layout)
-        slot: unreal.ScrollBoxSlot = scroll_box.add_child(border)
-        slot.size.size_rule = unreal.SlateSizeRule.FILL
+        slot: unreal.BorderSlot = border.set_content(layout)
+        slot.set_padding(unreal.Margin(2,2,2,2))
+        slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_FILL)
+        slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
+        slot = scroll_box.add_child(border)
+        #if fill:
+        #slot.size.size_rule = unreal.SlateSizeRule.FILL
+        #slot.size.size_rule = unreal.SlateSizeRule.FILL
         return scroll_box, layout
     
     def update_container_vis(self, index):
         self.container_widget.set_active_widget_index(index)
     
     def register_handles(self):
-        gc.collect()
+        #gc.collect()
         self._handle_list = shelf_core.StackWidgetHandle.__subclasses__()
         self._handle_list.sort(key=lambda x: x.order)
-        for i in self._handle_list:
-            if i.instance:
-                for entity in self.entity_list:
-                    if entity.display_name in i.support_tool:
-                        self._handle_instance_list.append(i(entity))
-    
+
     def unregister_handles(self):
         self._handle_list.clear()
-        length = len(self._handle_instance_list)
+        length = len(self.handle_instance_list)
+        import sys
         for index in range(length-1,-1,-1):
-            i = self._handle_instance_list[index]
-            self._handle_instance_list.pop(index)
+            i = self.handle_instance_list[index]
+            self.handle_instance_list.pop(index)
             i.release_reference()
             del i
+
+        #self.handle_instance_list.clear()
+        
 
 class CGTeamWorkWindow:
     
     def __init__(self):
-        self.setup()
-    
-    def setup(self):
         self.entity_list = [
             shelf_core.SideEntity("动画",icon_path=shelf_core.Utl.get_full_icon_path("animation.png")),
             shelf_core.SideEntity("材质",icon_path=shelf_core.Utl.get_full_icon_path("material.png")),
+            shelf_core.SideEntity("灯光",icon_path=shelf_core.Utl.get_full_icon_path("light.png")),
             shelf_core.SideEntity("定序器",icon_path=shelf_core.Utl.get_full_icon_path("sequence.png")),
-            shelf_core.SideEntity("AI",icon_path=shelf_core.Utl.get_full_icon_path("AI.png")),
+            shelf_core.SideEntity("通用",icon_path=shelf_core.Utl.get_full_icon_path("utl.png")),
+            shelf_core.SideEntity("AI",icon_path=shelf_core.Utl.get_full_icon_path("ai.png")),
             shelf_core.SideEntity("脚本",icon_path=shelf_core.Utl.get_full_icon_path("code.png")),
-            shelf_core.SideEntity("Gallery",icon_path=shelf_core.Utl.get_full_icon_path("utl.png")),
             shelf_core.SideEntity("日志",icon_path=shelf_core.Utl.get_full_icon_path("log.png")),
         ]
         self.main_layout = unreal.VerticalBox()
@@ -211,8 +232,15 @@ class CGTeamWorkWindow:
         self.border.set_brush_color(color)
         slot = self.main_layout.add_child_to_vertical_box(self.border)
         self.main_handle = StackedWidgetHandle(self.entity_list, color)
-        self.border.set_content(self.main_handle.export_widget)
         slot.size.size_rule = unreal.SlateSizeRule.FILL
+
+    def setup(self):
+        try:
+            self.main_handle.setup()
+        except Exception as e:
+            unreal.log_error(traceback.format_exc())
+
+        self.border.set_content(self.main_handle.export_widget)
 
     def clear(self):
         self.main_handle.unregister_handles()
@@ -220,3 +248,7 @@ class CGTeamWorkWindow:
     def __del__(self):
         print("CGTeamWorkWindow is being deleted")
         self.clear()
+    
+    def iter_handle(self):
+        for handle in self.main_handle.handle_instance_list:
+            yield handle

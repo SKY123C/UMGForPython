@@ -45,7 +45,7 @@ class SequenceSettings:
                 self._frame_start = float(value)
             except Exception as e:
                 unreal.log_warning("起始帧转换失败，使用默认0")
-                self._frame_start = 0.0
+                self._frame_start = 1001
         elif isinstance(value, (int, float)):
             self._frame_start = float(value)
         
@@ -59,18 +59,18 @@ class SequenceSettings:
             try:
                 self._frame_end = float(value)
             except Exception as e:
-                unreal.log_warning("结束帧转换失败，使用默认100")
-                self._frame_end = 100.0
+                unreal.log_warning("结束帧转换失败，使用默认1100")
+                self._frame_end = 1100
         elif isinstance(value, (int, float)):
             self._frame_end = float(value)
     
     def __post_init__(self):
         self.fps = 30.0
-        self.frame_start = 0.0
-        self.frame_end = 100.0
+        self.frame_start = 1001
+        self.frame_end = 1100
     
     def frame_range(self):
-        return [int(self.frame_start), int(self.frame_end)+1]
+        return [int(self.frame_start), int(self.frame_end)]
 
 
 @dataclass
@@ -91,6 +91,26 @@ class CameraSetting:
     current_aperture: float = 0.0
     constrain_aspect_ratio: bool = False
 
+
+class SequenceObjectType(Enum):
+    SPAWNABLE = 0
+    POSSESSABLE = 1
+
+
+class AddObjectScope:
+
+    def __init__(self, object):
+        self.object = object
+        self.actor = None
+
+    def __enter__(self):
+        self.actor = actor_system.spawn_actor_from_object(self.object, unreal.Vector(0,0,0), unreal.Rotator(0,0,0))
+        
+        return self.actor
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.actor:
+            actor_system.destroy_actor(self.actor)
 
 class SyncCameraSetting:
     ...
@@ -158,7 +178,7 @@ class UnrealSequenceInterface(UnrealInterface):
         if settings:
             sequence.set_display_rate(unreal.FrameRate(settings.fps,1))
             sequence.set_playback_start(int(settings.frame_start))
-            sequence.set_playback_end(int(settings.frame_end)+1)
+            sequence.set_playback_end(int(settings.frame_end))
             sequence.set_work_range_start((int(settings.frame_start) - 100)/settings.fps )
             sequence.set_work_range_end((int(settings.frame_end) + 100)/settings.fps)
             sequence.set_view_range_start((int(settings.frame_start) - 100)/settings.fps)
@@ -210,7 +230,8 @@ class UnrealSequenceInterface(UnrealInterface):
                 i.set_actor_label(setting.camera_name)
                 break
             actor_binding_proxy.set_display_name(setting.camera_name)
-            
+            unreal.LevelSequenceEditorBlueprintLibrary.close_level_sequence()
+            unreal.LevelSequenceEditorBlueprintLibrary.open_level_sequence(sequence)
         return [actor_binding_proxy, component_binding_proxy, cut_section]
     
     @add_logger
@@ -261,7 +282,6 @@ class UnrealSequenceInterface(UnrealInterface):
         unreal.LevelSequenceEditorBlueprintLibrary.force_update()
     
     def __get_import_camera_setting(self):
-        unreal.MovieSceneCameraCutSection
         engine_version = unreal.SystemLibrary.get_engine_version()
         import_setting = unreal.MovieSceneUserImportFBXSettings()
         if engine_version.startswith('4.27'):
@@ -272,29 +292,46 @@ class UnrealSequenceInterface(UnrealInterface):
             import_setting.set_editor_property('reduce_keys_tolerance', 0.001)
             import_setting.set_editor_property('convert_scene_unit', False)
             import_setting.set_editor_property('import_uniform_scale', 1.0)
-            import_setting.set_editor_property('replace_transform_track', False)
+            import_setting.set_editor_property('replace_transform_track', True)
         elif engine_version.startswith('5'): #UE5
             import_setting.set_editor_property('create_cameras', False)
             import_setting.set_editor_property('force_front_x_axis', False)
             import_setting.set_editor_property('match_by_name_only', False)
             import_setting.set_editor_property('reduce_keys', False)
             import_setting.set_editor_property('reduce_keys_tolerance', 0.001)
+            import_setting.set_editor_property('replace_transform_track', True)
         else:
             raise Exception("不支持的引擎版本")
         return import_setting
 
     @add_logger
-    def add_subsequence(self, parent_seq: unreal.MovieSceneSequence, children: List[unreal.MovieSceneSequence]):
+    def add_subsequence(self, parent_seq: unreal.MovieSceneSequence, children: List[unreal.MovieSceneSequence], start_frame=0):
+        track_list = parent_seq.find_tracks_by_type(unreal.MovieSceneSubTrack.static_class())
         for i in children:
-            track = parent_seq.add_track(unreal.MovieSceneSubTrack)
+            for track in track_list:
+                section_list = track.get_sections()
+                for section in section_list:
+                    if section.get_sequence() == i:
+                        break
+                else:
+                    continue
+                break
+            else:
+                track = parent_seq.add_track(unreal.MovieSceneSubTrack)
+                section: unreal.MovieSceneSubSection = track.add_section()
+                section.set_sequence(i)
+            start = 0
+            end = i.get_playback_end() - i.get_playback_start()
             track.set_display_name(i.get_name())
-            section: unreal.MovieSceneSubSection = track.add_section()
-            section.set_sequence(i)
-            #section.set_range(i.get_playback_start(), i.get_playback_end())
-            section.set_range(0, i.get_playback_end() - i.get_playback_start())
-    
+            if start_frame:
+                start = start_frame
+                end = start_frame + i.get_playback_end() - i.get_playback_start()
+            section.set_range(start, end)
+
     @add_logger
     def add_shotsequence(self, parent_seq: unreal.MovieSceneSequence, children: List[unreal.MovieSceneSequence]):
+        if not children:
+            return
         shot_track = parent_seq.add_track(unreal.MovieSceneCinematicShotTrack)
         count = 0
         for index, i in enumerate(children):
@@ -342,12 +379,12 @@ class UnrealSequenceInterface(UnrealInterface):
             sequence.set_display_rate(unreal.FrameRate(settings.fps,1))
         if sequence.get_playback_start() != int(settings.frame_start):
             sequence.set_playback_start(int(settings.frame_start))
-        if sequence.get_playback_end() != int(settings.frame_end)+1:
-            sequence.set_playback_end(int(settings.frame_end)+1)
-    
+        if sequence.get_playback_end() != int(settings.frame_end):
+            sequence.set_playback_end(int(settings.frame_end))
+
     @add_logger
     def set_section_range(self, section: unreal.MovieSceneSection, start, end):
-        end = int(end)+1
+        end = int(end)
         if section.get_start_frame() != int(start):
             section.set_start_frame(int(start))
         if section.get_end_frame() != end:
@@ -355,7 +392,7 @@ class UnrealSequenceInterface(UnrealInterface):
 
     @add_logger
     def set_sequence_playback(self, sequence: unreal.MovieSceneSequence, start, end):
-        end = int(end)+1
+        end = int(end)
         if sequence.get_playback_start() != int(start):
             sequence.set_playback_start(int(start))
         if sequence.get_playback_end() != end:
@@ -365,3 +402,16 @@ class UnrealSequenceInterface(UnrealInterface):
         sequence.set_work_range_end((int(end) + 100)/fps)
         sequence.set_view_range_start((int(start) - 100)/fps)
         sequence.set_view_range_end((int(end) + 100)/fps)
+    
+    @add_logger
+    def add_object(self, sequence: unreal.MovieSceneSequence, obj: unreal.Object, type: SequenceObjectType):
+        binding_proxy = None
+        if obj:
+            unreal.SkeletalMesh.static_class()
+            with AddObjectScope(obj) as actor:
+                if type == SequenceObjectType.SPAWNABLE:
+                    binding_proxy = sequence.add_spawnable_from_instance(actor)
+                    actor_system.destroy_actor(actor)
+                elif type == SequenceObjectType.POSSESSABLE:
+                    binding_proxy = sequence.add_possessable(actor)
+        return binding_proxy

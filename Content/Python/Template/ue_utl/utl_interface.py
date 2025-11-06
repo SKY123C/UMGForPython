@@ -6,6 +6,7 @@ asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
 asset_registry: unreal.AssetRegistry = unreal.AssetRegistryHelpers.get_asset_registry()
 actor_system: unreal.EditorActorSubsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 asset_system = unreal.get_editor_subsystem(unreal.AssetEditorSubsystem)
+seq_subsystem: unreal.LevelSequenceEditorSubsystem = unreal.get_editor_subsystem(unreal.LevelSequenceEditorSubsystem)
 
 
 class UnrealInterface:
@@ -39,7 +40,7 @@ class UnrealUTLInterface(UnrealInterface):
             unreal.log_warning(f"Asset {path}/{name} already exists.")
             return None
         return asset_tools.create_asset(name, path, asset_class, factory)
-    
+
     @add_logger
     def get_asset_by_path(self, path, recursive=False, alllow_class_list=None):
         """
