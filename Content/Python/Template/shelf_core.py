@@ -155,6 +155,7 @@ class BaseHandle:
     order = 0
     valid = True
     handle_type = HandleType.WIDGET
+    dep = []
 
     def __init__(self, handle_id=""):
         self._root_widget = None
@@ -416,3 +417,32 @@ class BaseInterface:
 
 
 UMGWIDGET = None
+
+def load_register_hanndles(handle_list: list[BaseHandle]):
+    order = []
+    graph = {}
+    for i in handle_list:
+        graph[i.__name__] = i.dep
+    # starting ending
+    state = {}
+    def recursive(class_name):
+        if class_name not in graph:
+            raise SystemError(f"无法找到类：{class_name}")
+        
+        if state.get(class_name) == "starting":
+            raise SystemError("存在循环依赖")
+        if state.get(class_name) == "ending":
+            return
+        for i in graph.get(class_name, []):
+            recursive(i)
+        state[class_name] = "ending"
+        order.append(class_name)
+    
+    for i in handle_list:
+        recursive(i.__name__)
+    res = []
+    for i in order:
+        for r in handle_list:
+            if r.__name__ == i:
+                res.append(r)
+    return res
