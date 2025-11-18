@@ -12,14 +12,13 @@ public class UMGForPython : ModuleRules
         PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
-				Path.Combine(EngineDir, @"Plugins\Experimental\PythonScriptPlugin\Source\PythonScriptPlugin\Private")
-            }
+			}
 			);
 
 
         PrivateIncludePaths.AddRange(
             new string[] {
-
+                
             });
 
 
@@ -46,7 +45,8 @@ public class UMGForPython : ModuleRules
                 "UMG",
                 "Blutility",
 				"InputCore",
-                "Python3"
+                "Python3",
+				"ToolWidgets"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
