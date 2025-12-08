@@ -8,6 +8,7 @@ from enum import Enum
 import tempfile
 from typing import Union
 import traceback
+import contextlib
 
 
 @unreal.uclass()
@@ -331,39 +332,67 @@ class LoggerUObject(unreal.Object):
         设置日志记录器
         """
         self.logger = unreal.create_python_object_handle(logger)
-        print("设置日志记录器")
-        print(self.logger)
-        print(unreal.resolve_python_object_handle(self.logger))
+        
+    def get_logger(self) -> ToolShelfLogger:
+        return unreal.resolve_python_object_handle(self.logger)
+    
+
+@contextlib.contextmanager
+def check_status_scope(in_logger: ToolShelfLogger, message="发生错误，请查看日志"):
+
+    try:
+        in_logger.begin()
+        yield()
+    finally:
+        in_logger.end()
+    error_message = in_logger.get_section_log(logging.ERROR)
+    warning_message = in_logger.get_section_log(logging.WARNING)
+    if error_message:
+        unreal.EditorDialog.show_message("错误", f"{message}\n{error_message}", unreal.AppMsgType.OK)
+    elif warning_message:
+        unreal.EditorDialog.show_message("成功", f"操作成功,但存在一些警告\n{warning_message}", unreal.AppMsgType.OK)
+    else:
+        unreal.EditorDialog.show_message("成功", "操作成功", unreal.AppMsgType.OK)
 
 def check_status(message="发生错误，请查看日志"):
     def wrapper(func):
         def wrapper2(instance: Union[StackWidgetHandle, unreal.Object], *args, **kwargs):
-            t_logger = None
-
-            if isinstance(instance, StackWidgetHandle):
-                t_logger = instance.logger
-            elif isinstance(instance, unreal.Object):
-                if not hasattr(instance, "logger"):
-                    raise AttributeError("实例没有logger属性")
-                t_logger = unreal.resolve_python_object_handle(instance.logger)
-            elif hasattr(instance, "logger") and isinstance(instance.logger, ToolShelfLogger):
-                t_logger = instance.logger
-            else:
-                raise TypeError("实例类型不正确")
-            t_logger.begin()
             try:
-                func(instance, *args, **kwargs)
+                t_logger = None
+
+                if isinstance(instance, StackWidgetHandle):
+                    t_logger = instance.logger
+                elif isinstance(instance, unreal.Object):
+                    if not hasattr(instance, "logger"):
+                        raise AttributeError("实例没有logger属性")
+                    if isinstance(instance.logger, ToolShelfLogger):
+                        t_logger = instance.logger
+                    elif isinstance(instance.logger, LoggerUObject):
+                        t_logger = instance.logger.get_logger()
+                    elif isinstance(instance.logger, unreal.PythonObjectHandle):
+                        t_logger = unreal.resolve_python_object_handle(instance.logger)
+                        ...
+                elif hasattr(instance, "logger"):
+                    if isinstance(instance.logger, ToolShelfLogger):
+                        t_logger = instance.logger
+                else:
+                    raise TypeError("实例类型不正确")
+                t_logger.begin()
+                try:
+                    func(instance, *args, **kwargs)
+                except Exception as e:
+                    t_logger.error(traceback.format_exc())
+                t_logger.end()
+                error_message = t_logger.get_section_log(logging.ERROR)
+                warning_message = t_logger.get_section_log(logging.WARNING)
+                if error_message:
+                    unreal.EditorDialog.show_message("错误", f"{message}\n{error_message}", unreal.AppMsgType.OK)
+                elif warning_message:
+                    unreal.EditorDialog.show_message("成功", f"操作成功,但存在一些警告\n{warning_message}", unreal.AppMsgType.OK)
+                else:
+                    unreal.EditorDialog.show_message("成功", "操作成功", unreal.AppMsgType.OK)
             except Exception as e:
-                t_logger.error(traceback.format_exc())
-            t_logger.end()
-            error_message = t_logger.get_section_log(logging.ERROR)
-            warning_message = t_logger.get_section_log(logging.WARNING)
-            if error_message:
-                unreal.EditorDialog.show_message("错误", f"{message}\n{error_message}", unreal.AppMsgType.OK)
-            elif warning_message:
-                unreal.EditorDialog.show_message("成功", f"操作成功,但存在一些警告\n{warning_message}", unreal.AppMsgType.OK)
-            else:
-                unreal.EditorDialog.show_message("成功", "操作成功", unreal.AppMsgType.OK)
+                unreal.EditorDialog.show_message("错误", f"执行装饰器失败: {traceback.format_exc()}", unreal.AppMsgType.OK)
         return wrapper2
     return wrapper
 

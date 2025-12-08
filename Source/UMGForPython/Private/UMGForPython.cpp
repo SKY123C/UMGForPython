@@ -64,17 +64,23 @@ static PyObject* ExecuteInMainThreadWithResult(PyObject* ModuleSelf, PyObject* I
     Py_XINCREF(InArgs);
     if (!IsInGameThread())
     {
+        FEvent* DoneEvent = FPlatformProcess::GetSynchEventFromPool();
         Py_BEGIN_ALLOW_THREADS
-            FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([=, &Result]()
+            auto Ticker = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([=, &Result](float DeltaTime) -> bool
         {
-            //PyEval_InitThreads();
-            PyGILState_STATE State = PyGILState_Ensure();
-            Result = CallFunc(InArgs, InKwargs);
-            PyGILState_Release(State);
-
-        }, TStatId(), NULL, ENamedThreads::GameThread);
-
-        FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);
+            if (!FUObjectThreadContext::Get().IsRoutingPostLoad)
+            {
+                PyGILState_STATE State = PyGILState_Ensure();
+                Result = CallFunc(InArgs, InKwargs);
+                PyGILState_Release(State);
+                DoneEvent->Trigger();
+                return false;
+            }
+            return true;
+        }), 1);
+        DoneEvent->Wait();
+        FTSTicker::GetCoreTicker().RemoveTicker(Ticker);
+        FPlatformProcess::ReturnSynchEventToPool(DoneEvent);
         Py_END_ALLOW_THREADS
     }
     else

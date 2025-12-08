@@ -12,11 +12,10 @@ from . import shelf_core
 root_logger = logging.getLogger("ToolShelf")
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
 asset_registry: unreal.AssetRegistry = unreal.AssetRegistryHelpers.get_asset_registry()
-
 if unreal.SystemLibrary.get_engine_version().startswith("4"):
     asset_system = unreal.EditorAssetLibrary
 else:
-    asset_system = unreal.get_editor_subsystem(unreal.AssetEditorSubsystem)
+    asset_system: unreal.EditorAssetSubsystem = unreal.get_editor_subsystem(unreal.EditorAssetSubsystem)
     
 def register_all_stack_handle(reload=False):
     def check_py(in_path: pathlib.Path):
@@ -50,10 +49,6 @@ def useful_interchanged():
     except Exception as e:
         ...
     return result
-
-
-def send_log_to_confluence(token="", page_id="", file_name="", comment=""):
-    ...
 
 def extend_python_path():
     sys.path.append(os.path.join(os.path.dirname(__file__), "site-packages"))

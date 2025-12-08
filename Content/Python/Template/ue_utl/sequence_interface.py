@@ -1,9 +1,10 @@
 import unreal
 import logging
-from .utl_interface import add_logger, UnrealUTLInterface, UnrealInterface, actor_system
+from .utl_interface import add_logger, UnrealUTLInterface, UnrealInterface, actor_system, editor_asset_system
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import List
+import contextlib
 import os
 try:
     import fbx
@@ -90,6 +91,7 @@ class CameraSetting:
     gate_fit: Enum = auto
     current_aperture: float = 0.0
     constrain_aspect_ratio: bool = False
+    enable_scene_distance : bool = True
 
 
 class SequenceObjectType(Enum):
@@ -254,6 +256,10 @@ class UnrealSequenceInterface(UnrealInterface):
         component.set_editor_property("current_focal_length", camera_setting.focal_length)
         component.set_editor_property("current_aperture", camera_setting.current_aperture)
         component.set_editor_property("constrain_aspect_ratio", camera_setting.constrain_aspect_ratio)
+        if not camera_setting.enable_scene_distance:
+            focus_setting = component.get_editor_property("focus_settings")
+            focus_setting.set_editor_property("focus_method", unreal.CameraFocusMethod.DISABLE)
+            component.set_editor_property("focus_settings", focus_setting)
         # if has_opend:
         #     unreal.LevelSequenceEditorBlueprintLibrary.open_level_sequence(actor_binding_proxy.sequence)
 
@@ -407,7 +413,6 @@ class UnrealSequenceInterface(UnrealInterface):
     def add_object(self, sequence: unreal.MovieSceneSequence, obj: unreal.Object, type: SequenceObjectType):
         binding_proxy = None
         if obj:
-            unreal.SkeletalMesh.static_class()
             with AddObjectScope(obj) as actor:
                 if type == SequenceObjectType.SPAWNABLE:
                     binding_proxy = sequence.add_spawnable_from_instance(actor)
@@ -415,3 +420,66 @@ class UnrealSequenceInterface(UnrealInterface):
                 elif type == SequenceObjectType.POSSESSABLE:
                     binding_proxy = sequence.add_possessable(actor)
         return binding_proxy
+    
+    @add_logger
+    def find_bindings_by_generate_class(self, sequence: unreal.MovieSceneSequence, in_object):
+        res = []
+        in_generated_class = None
+        if unreal.MathLibrary.class_is_child_of(in_object.get_class(), unreal.Blueprint.static_class()):
+            in_generated_class = editor_asset_system.load_blueprint_class(in_object.get_path_name())
+            for binding in sequence.get_bindings():
+                object_template = binding.get_object_template()
+                if not object_template:
+                    continue
+                if object_template.get_class() == in_generated_class:
+                    res.append(binding)
+        else:
+            self.logger.error("传入的对象不是蓝图类型")
+        return res
+    
+    @add_logger
+    def add_unique_track(self, binding_proxy: unreal.MovieSceneBindingProxy, in_track_class):
+        track_list = binding_proxy.find_tracks_by_type(in_track_class)
+        for i in track_list:
+            binding_proxy.remove_track(i)
+        track = binding_proxy.add_track(in_track_class)
+        return track
+    
+    @add_logger
+    def find_subtrack_by_name(self, in_seq: unreal.MovieSceneSequence, in_name, b_contain=False):
+        for i in in_seq.find_tracks_by_type(unreal.MovieSceneSubTrack):
+            display_name = str(i.get_display_name())
+            section_list = []
+            if b_contain:
+                if in_name in display_name:
+                    section_list = i.get_sections()
+                    break
+            else:
+                if display_name == in_name:
+                    section_list = i.get_sections()
+                    break
+        for i in section_list:
+            sub_seq: unreal.MovieSceneSequence = i.get_sequence()
+            if sub_seq:
+                return i
+    
+    @add_logger
+    def set_current_frame(self, frame):
+        param = unreal.LevelSequenceEditorBlueprintLibrary.get_global_position()
+        param.frame.frame_number.value = frame
+        unreal.LevelSequenceEditorBlueprintLibrary.set_global_position(param)
+    
+    @add_logger
+    @contextlib.contextmanager
+    def focus_sequence_scope(self, section: unreal.MovieSceneSection):
+        unreal.LevelSequenceEditorBlueprintLibrary.focus_level_sequence(section)
+        try:
+            yield
+        finally:
+            unreal.LevelSequenceEditorBlueprintLibrary.focus_parent_sequence()
+    
+    @add_logger
+    def get_bounds_object(self, root_sequence, sub_sequence, binding_proxy):
+        # must has opend sequence
+        binding_id = root_sequence.get_portable_binding_id(sub_sequence, binding_proxy)
+        return unreal.LevelSequenceEditorBlueprintLibrary.get_bound_objects(binding_id)

@@ -94,7 +94,7 @@ class StackedWidgetHandle:
                     try:
                         for handle_ins in handle_ins_list:
                             if isinstance(handle_ins, handle_class):
-                                handle_ins.add_entity(i)
+                                handle_ins.append_entity(i)
                                 break
                         else:
                             handle_ins = handle_class(i)
@@ -198,16 +198,11 @@ class StackedWidgetHandle:
     def register_handles(self):
         #gc.collect()
         class_list = shelf_core.StackWidgetHandle.__subclasses__()
-        for i in class_list:
-            print(f"发现工具栏句柄：{i.__name__}")
         self._handle_list = shelf_core.load_register_hanndles(class_list)
-        for i in self._handle_list:
-            print(f"注册工具栏句柄：{i.__name__}")
 
     def unregister_handles(self):
         self._handle_list.clear()
         length = len(self.handle_instance_list)
-        import sys
         for index in range(length-1,-1,-1):
             i = self.handle_instance_list[index]
             self.handle_instance_list.pop(index)
@@ -227,8 +222,7 @@ class CGTeamWorkWindow:
             shelf_core.SideEntity("灯光",icon_path=shelf_core.Utl.get_full_icon_path("light.png")),
             shelf_core.SideEntity("定序器",icon_path=shelf_core.Utl.get_full_icon_path("sequence.png")),
             shelf_core.SideEntity("通用",icon_path=shelf_core.Utl.get_full_icon_path("utl.png")),
-            #shelf_core.SideEntity("检查",icon_path=shelf_core.Utl.get_full_icon_path("check.png")),
-            shelf_core.SideEntity("AI",icon_path=shelf_core.Utl.get_full_icon_path("ai.png")),
+            shelf_core.SideEntity("检查",icon_path=shelf_core.Utl.get_full_icon_path("check.png")),
             shelf_core.SideEntity("脚本",icon_path=shelf_core.Utl.get_full_icon_path("code.png")),
             shelf_core.SideEntity("日志",icon_path=shelf_core.Utl.get_full_icon_path("log.png")),
         ]

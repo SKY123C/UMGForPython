@@ -15,6 +15,7 @@ class ImportParams:
     file_path: str = ""
     dst_path: str = ""
     skeleton_path: str = ""
+    dst_name: str = ""
 
 def useful_interchanged():
     result = False
@@ -88,6 +89,8 @@ class AnimInterface(UnrealInterface):
             import_asset_parameters.is_automated = True
             import_asset_parameters.replace_existing = True
             import_asset_parameters.override_pipelines.append(unreal.SoftObjectPath(pipeline.get_path_name()))
+            if i.dst_name:
+                import_asset_parameters.destination_name = i.dst_name
             pipeline.common_skeletal_meshes_and_animations_properties.import_only_animations = True
             self.temp_skeleton = unreal.load_asset(i.skeleton_path)
             pipeline.common_skeletal_meshes_and_animations_properties.skeleton = self.temp_skeleton
@@ -97,7 +100,7 @@ class AnimInterface(UnrealInterface):
         self.temp_skeleton = None
         return out_res
 
-    def __create_animation_task(self, file_path, dst_path, skeleton_path):
+    def __create_animation_task(self, file_path, dst_path, skeleton_path, destination_name=None):
         if unreal.SystemLibrary.get_engine_version().startswith("5"):
             asset_system = unreal.get_editor_subsystem(unreal.EditorAssetSubsystem)
         else:
@@ -125,7 +128,8 @@ class AnimInterface(UnrealInterface):
         import_task.automated = True
         import_task.filename = file_path
         import_task.destination_path = dst_path
-        import_task.imported_object_paths
+        if destination_name:
+            import_task.destination_name = destination_name
         '''
         FbxImportUI配置
         '''

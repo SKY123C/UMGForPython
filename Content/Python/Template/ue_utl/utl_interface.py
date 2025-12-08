@@ -7,7 +7,7 @@ asset_registry: unreal.AssetRegistry = unreal.AssetRegistryHelpers.get_asset_reg
 actor_system: unreal.EditorActorSubsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 asset_system = unreal.get_editor_subsystem(unreal.AssetEditorSubsystem)
 seq_subsystem: unreal.LevelSequenceEditorSubsystem = unreal.get_editor_subsystem(unreal.LevelSequenceEditorSubsystem)
-
+editor_asset_system: unreal.EditorAssetSubsystem = unreal.get_editor_subsystem(unreal.EditorAssetSubsystem)
 
 class UnrealInterface:
 
