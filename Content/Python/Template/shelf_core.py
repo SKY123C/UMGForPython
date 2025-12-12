@@ -444,7 +444,6 @@ class BaseInterface:
     def __init__(self, logger: ToolShelfLogger):
         self.logger = logger
 
-
 UMGWIDGET = None
 
 def load_register_hanndles(handle_list: list[BaseHandle]):

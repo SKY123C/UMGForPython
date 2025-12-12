@@ -1,5 +1,5 @@
 
-from .. import shelf_core
+from .. import shelf_core, shelf_utl
 import unreal
 import os
 import threading
@@ -9,19 +9,17 @@ import time
 @unreal.uclass()
 class ScriptToolHandleClass(unreal.Object):
     
+    out_directory = unreal.uproperty(unreal.FilePath, meta={"DisplayName": "日志路径", "ContentDir": "", "Category": "Log", "FilePathFilter": "log","DisplayPriority": "1"})
     object_class = unreal.uproperty(unreal.Object, meta={"Category": "打 印", "DisplayName": "类 型"})
     debug = unreal.uproperty(bool, meta={"Category": "Debug", "DisplayName": "调试"})
     
     def _post_init(self):
         self.debug = True if os.environ.get("tw_debug") == "True" else False
         
-    @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "打印所选资产以及属性", "Category": "打 印"})
+    @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "打印所选资产", "Category": "打 印"})
     def print_selected_assets(self):
         for i in unreal.EditorUtilityLibrary.get_selected_assets():
             print(i)
-            for j in sorted(dir(i)):
-                print(j)
-            print("-"* 20)
     
     @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "打印所选Actor", "Category": "打 印"})
     def print_selected_actors(self):
@@ -52,8 +50,23 @@ class ScriptToolHandleClass(unreal.Object):
     def exec_gc(self):
         unreal.SystemLibrary.collect_garbage()
     
+    @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "发送Log到Confluence", "Category": "Log","DisplayPriority": "2"})
+    def send_log_to_confluence(self):
+        #shelf_utl.send_log_to_confluence(file_name=self.out_directory.file_path)
+        ...
     
-                       
+    @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "打印全部轨道", "Category": "Sequence"})
+    def print_all_sequence_tracks(self):
+        seq: unreal.MovieSceneSequence = unreal.LevelSequenceEditorBlueprintLibrary.get_current_level_sequence()
+        if not seq:
+            unreal.log_error("没有打开的序列")
+            return
+        for i in seq.get_marked_frames():
+            print(i)
+        for i in seq.get_root_folders_in_sequence():
+            print(i)
+
+
 @unreal.uclass()
 class ScriptWidget(unreal.VerticalBox):
 
@@ -107,7 +120,6 @@ class ScriptWidget(unreal.VerticalBox):
             btn.add_child(text)
             layout.add_child_to_vertical_box(btn)
         return layout
-    
 
 class ScriptToolHandle(shelf_core.StackWidgetHandle):
     
@@ -118,3 +130,4 @@ class ScriptToolHandle(shelf_core.StackWidgetHandle):
     
     def setup(self):
         self._root_widget = ScriptWidget()
+

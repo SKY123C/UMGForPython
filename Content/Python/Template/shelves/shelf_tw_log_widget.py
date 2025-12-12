@@ -32,7 +32,7 @@ class LogWidget(unreal.VerticalBox):
             B = G = 0
         else:
             R = G = B = 1
-        if text[-1] == "\n":
+        if text and text[-1] == "\n":
             text = text[0:-1]
         text = f"<PythonRichText FontColor=\"R={R} G={G} B={B}\">{text}</>"
         self.edit_box.set_text(str(self.edit_box.get_text()) + "\n" + text)
@@ -40,7 +40,7 @@ class LogWidget(unreal.VerticalBox):
 class LogToolHandle(shelf_core.StackWidgetHandle):
     
     instance = True
-    order = 0.1
+    order = 0
     support_tool = ["日志"]
     fill = True
     

@@ -12,6 +12,7 @@ from . import shelf_core
 root_logger = logging.getLogger("ToolShelf")
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
 asset_registry: unreal.AssetRegistry = unreal.AssetRegistryHelpers.get_asset_registry()
+editor_asset_system: unreal.EditorAssetSubsystem = unreal.get_editor_subsystem(unreal.EditorAssetSubsystem)
 if unreal.SystemLibrary.get_engine_version().startswith("4"):
     asset_system = unreal.EditorAssetLibrary
 else:
