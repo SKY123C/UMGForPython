@@ -46,7 +46,8 @@ public class UMGForPython : ModuleRules
                 "Blutility",
 				"InputCore",
                 "Python3",
-				"ToolWidgets"
+				"ToolWidgets",
+                "Json"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

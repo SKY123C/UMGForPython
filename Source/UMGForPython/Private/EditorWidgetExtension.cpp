@@ -6,14 +6,9 @@
 #include "TextureCompiler.h"
 #include "ImageUtils.h"
 #include "UMG.h"
-#include <iostream>
-#include <sstream>
-#include <string>
 #include "Misc/Parse.h"
-#include "UMGForPython.h"
 #include "ExtendWidgets/PythonWindow.h"
 
-#undef UpdateResource
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >=1
 #define FEditorStyle FAppStyle
 #endif
@@ -121,7 +116,6 @@ UTexture2D* UPythonWidgetExtendLib::CreateTexture2DFromRaw(TArray<uint8> RawData
     }
     // Update the remote texture data
     NewTexture2D->UpdateResource();
-
     NewTexture2D->PostEditChange();
     FTextureCompilingManager::Get().FinishCompilation({ NewTexture2D });
     return NewTexture2D;

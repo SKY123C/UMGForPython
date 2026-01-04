@@ -3,7 +3,6 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/Widget.h"
 #include "UMG.h"
-#include "python.h"
 #include "EditorWidgetExtension.generated.h"
 
 UCLASS()

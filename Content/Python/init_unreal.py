@@ -2,7 +2,7 @@ import os
 import sys
 import unreal
 import pathlib
-
+import traceback
 # project_dir = unreal.SystemLibrary.get_project_directory()
 # python_dir = os.path.join(project_dir, r"TA")
 # lib_dir = os.path.join(project_dir, r"TA/TAPython/Lib/site-packages")
@@ -89,4 +89,4 @@ try:
     shelf_start.start(False)
     main()
 except Exception as e:
-    unreal.log_error(e)
+    unreal.log_error(traceback.format_exc())

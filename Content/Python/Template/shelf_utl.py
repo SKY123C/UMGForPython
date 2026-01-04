@@ -4,7 +4,6 @@ import importlib
 import os
 import unreal
 import mimetypes
-import requests
 import sys
 import traceback
 from . import shelf_core
@@ -37,11 +36,14 @@ def register_all_stack_handle(reload=False):
             importlib.reload(module_obj)
 
 def get_is_debug():
-    tw_debug = os.environ.get("tw_debug")
+    tw_debug = os.environ.get("shelf_debug")
     result = False
     if tw_debug is not None:
-        result = False if os.environ.get("tw_debug") == "False" else True
+        result = False if os.environ.get("shelf_debug") == "False" else True
     return result
+
+def set_is_debug(value: bool):
+    os.environ["shelf_debug"] = "True" if value else "False"
 
 def useful_interchanged():
     result = False

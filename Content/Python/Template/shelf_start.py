@@ -14,15 +14,13 @@ import sys
 # add parent path to sys.path
 
 # UMGWIDGET = None
-os.environ["tw_debug"] = "False"
+os.environ["shelf_debug"] = "False"
 shelf_utl.extend_python_path()
 
 def start(show=True):
     # global UMGWIDGET
 
-    if os.environ.get("tw_debug") == "True":
-        import tw_lib
-        importlib.reload(tw_lib)
+    if shelf_utl.get_is_debug():
         #importlib.reload(shelf_core)
         importlib.reload(shelf_utl)
         importlib.reload(ue_utl)

@@ -14,7 +14,7 @@ class ScriptToolHandleClass(unreal.Object):
     debug = unreal.uproperty(bool, meta={"Category": "Debug", "DisplayName": "调试"})
     
     def _post_init(self):
-        self.debug = True if os.environ.get("tw_debug") == "True" else False
+        self.debug = True if shelf_utl.get_is_debug() else False
         
     @unreal.ufunction(meta={"CallInEditor": "true", "DisplayName": "打印所选资产", "Category": "打 印"})
     def print_selected_assets(self):
@@ -108,7 +108,7 @@ class ScriptWidget(unreal.VerticalBox):
     def on_property_changed(self, property_name):
         property_name = str(property_name)
         if property_name == "debug":
-            os.environ["tw_debug"] = str(getattr(self.detail_object, property_name))
+            shelf_utl.set_is_debug(getattr(self.detail_object, property_name))
     
     def create(self):
         layout = unreal.VerticalBox()
