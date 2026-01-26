@@ -201,7 +201,11 @@ void UPythonWidgetExtendLib::SpawnAndRegisterTab(FName TabID, FString TabLabel, 
             DockTab->SetContent(Widget->TakeWidget());
         }
     }
-    FGlobalTabmanager::Get()->TryInvokeTab(FTabId(TabID));
+    TSharedPtr<SDockTab> CurrentDockTab = FGlobalTabmanager::Get()->TryInvokeTab(FTabId(TabID));
+    if (CurrentDockTab.IsValid())
+    {
+        CurrentDockTab->DrawAttention();
+    }
 }
 
 void UPythonWidgetExtendLib::AddRootWidget(UUserWidget* Widget)
