@@ -3,14 +3,10 @@ from . import shelf_main as _main
 from . import (
                 shelf_core,
                 shelf_utl,
-                ue_utl,
-                shelf_utl_widgets,
                 )
 import importlib
 import os
 import unreal
-import pathlib
-import sys
 # add parent path to sys.path
 
 # UMGWIDGET = None
@@ -21,6 +17,7 @@ def start(show=True):
     # global UMGWIDGET
 
     if shelf_utl.get_is_debug():
+        import ue_utl
         #importlib.reload(shelf_core)
         importlib.reload(shelf_utl)
         importlib.reload(ue_utl)
