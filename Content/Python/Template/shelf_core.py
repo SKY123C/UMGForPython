@@ -354,7 +354,7 @@ def check_status_scope(in_logger: ToolShelfLogger, message="发生错误，请�
     else:
         unreal.EditorDialog.show_message("成功", "操作成功", unreal.AppMsgType.OK)
 
-def check_status(message="发生错误，请查看日志"):
+def check_status(message="发生错误，请查看日志", shot_dialog=True):
     def wrapper(func):
         def wrapper2(instance: Union[StackWidgetHandle, unreal.Object], *args, **kwargs):
             try:
@@ -390,7 +390,8 @@ def check_status(message="发生错误，请查看日志"):
                 elif warning_message:
                     unreal.EditorDialog.show_message("成功", f"操作成功,但存在一些警告\n{warning_message}", unreal.AppMsgType.OK)
                 else:
-                    unreal.EditorDialog.show_message("成功", "操作成功", unreal.AppMsgType.OK)
+                    if shot_dialog:
+                        unreal.EditorDialog.show_message("成功", "操作成功", unreal.AppMsgType.OK)
             except Exception as e:
                 unreal.EditorDialog.show_message("错误", f"执行装饰器失败: {traceback.format_exc()}", unreal.AppMsgType.OK)
         return wrapper2
