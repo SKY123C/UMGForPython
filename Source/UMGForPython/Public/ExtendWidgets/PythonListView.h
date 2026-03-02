@@ -10,6 +10,7 @@ class UPythonListViewString : public UWidget
 	GENERATED_UCLASS_BODY()
 
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSelectionChangedEvent, FString, SelectedItem, ESelectInfo::Type, SelectionType);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemDoubleClickedEvent, FString, ClickedItem);
 
 public:
 	UFUNCTION(BlueprintCallable)
@@ -36,10 +37,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 	TArray<FString> AddSingleHeaderRow(FName Name);
 
+
 public:
 
 	UPROPERTY(BlueprintAssignable)
 	FOnSelectionChangedEvent OnSelectionChanged;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnItemDoubleClickedEvent OnDoubleClicked;
 
 	UPROPERTY(BlueprintReadWrite,EditAnyWhere)
 	bool Multi;
@@ -47,7 +52,8 @@ public:
 	UPROPERTY(BlueprintReadWrite,EditAnyWhere)
 	int ItemHeight = 15;
 
-
+	UPROPERTY(BlueprintReadWrite)
+	FName ColumnName;
 
 public:
 
@@ -57,9 +63,10 @@ protected:
 	TSharedRef<ITableRow> OnGenerateWidget(TSharedPtr<FString> Item, const TSharedRef< STableViewBase >& OwnerTable);
 	virtual void SynchronizeProperties();
 	void OnSelectioinChanged(TSharedPtr<FString> Item, ESelectInfo::Type SelectionType);
+	void OnItemDoubleClicked(TSharedPtr<FString> Item);
 	TArray< TSharedPtr<FString> > ListItems;
 	virtual TSharedRef<SWidget> RebuildWidget() override final;
 	TSharedPtr< SListView< TSharedPtr<FString> >> MyListView;
-	TSharedPtr<SHeaderRow> HeaderRow = SNew(SHeaderRow);
+	TSharedPtr<SHeaderRow> HeaderRow;
 };
 
