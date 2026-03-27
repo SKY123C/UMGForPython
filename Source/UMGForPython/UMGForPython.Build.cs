@@ -47,7 +47,7 @@ public class UMGForPython : ModuleRules
 				"InputCore",
                 "Python3",
 				"ToolWidgets",
-                "Json"
+                "Json",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

@@ -26,6 +26,11 @@
 			"Name": "UMGForPython",
 			"Type": "UncookedOnly",
 			"LoadingPhase": "PostEngineInit"
+		},
+		{
+			"Name": "PythonBinding",
+			"Type": "UncookedOnly",
+			"LoadingPhase": "PostEngineInit"
 		}
 	]
 }

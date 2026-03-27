@@ -252,7 +252,7 @@ TSharedPtr<FPythonTreeNode> SSearchableTreeCombobox::RebuildTree(TSharedPtr<FPyt
 
 		if (FilterText.IsEmpty() || Node->GetName().Find(FilterText, ESearchCase::Type::IgnoreCase) != INDEX_NONE || 
 			Node->GetID().Find(FilterText, ESearchCase::Type::IgnoreCase) != INDEX_NONE || 
-			Node->GetID().Find(FilterText, ESearchCase::Type::IgnoreCase) != INDEX_NONE)
+			Node->GetPlot().Find(FilterText, ESearchCase::Type::IgnoreCase) != INDEX_NONE)
 		{
 			return FPythonTreeNode::Make(Node);
 		}
