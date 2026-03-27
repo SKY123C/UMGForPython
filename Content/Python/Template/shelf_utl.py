@@ -4,9 +4,11 @@ import importlib
 import os
 import unreal
 import mimetypes
+import requests
 import sys
 import traceback
 from . import shelf_core
+import tomllib
 
 root_logger = logging.getLogger("ToolShelf")
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -16,7 +18,24 @@ if unreal.SystemLibrary.get_engine_version().startswith("4"):
     asset_system = unreal.EditorAssetLibrary
 else:
     asset_system: unreal.EditorAssetSubsystem = unreal.get_editor_subsystem(unreal.EditorAssetSubsystem)
+
+
+class ToolShelfConfig:
+
+    def __init__(self):
+        self.config_path = os.path.join(os.path.dirname(__file__), "ToolShelf.toml")
+        self.reload_package = []
+        self.reload_toolshelf = []
+        self.load_config()
     
+    def load_config(self):
+        if os.path.exists(self.config_path):
+            with open(self.config_path, "rb") as f:
+                config = tomllib.load(f)
+                project_config = config.get("Project", {})
+                self.reload_package = project_config.get("reload_package", [])
+                self.reload_toolshelf = project_config.get("reload_toolshelf_file", [])
+
 def register_all_stack_handle(reload=False):
     def check_py(in_path: pathlib.Path):
         return in_path.is_file() and in_path.suffix.lower() == ".py" and not in_path.stem.startswith("__")
@@ -25,6 +44,8 @@ def register_all_stack_handle(reload=False):
     for x in pathlib.Path(__file__).parent.joinpath(shelf_name).iterdir():
         try:
             module_obj = None
+            if x.stem not in toolshelf_config.reload_package:
+                continue
             if check_py(x) and x.stem.startswith("shelf_"):
                 module_obj = importlib.import_module(f".{shelf_name}.{x.stem}", root)
             elif x.is_dir() and not x.stem.startswith("__"):
@@ -36,14 +57,11 @@ def register_all_stack_handle(reload=False):
             importlib.reload(module_obj)
 
 def get_is_debug():
-    tw_debug = os.environ.get("shelf_debug")
+    tw_debug = os.environ.get("tw_debug")
     result = False
     if tw_debug is not None:
-        result = False if os.environ.get("shelf_debug") == "False" else True
+        result = False if os.environ.get("tw_debug") == "False" else True
     return result
-
-def set_is_debug(value: bool):
-    os.environ["shelf_debug"] = "True" if value else "False"
 
 def useful_interchanged():
     result = False
@@ -57,9 +75,22 @@ def extend_python_path():
     sys.path.append(os.path.join(os.path.dirname(__file__), "site-packages"))
 
 
-
 def find_handle(handle_name):
     for i in shelf_core.UMGWIDGET.iter_handle():
         if i.__class__.__name__ == handle_name:
             return i
     return
+
+def get_root_path():
+    return os.path.dirname(__file__)
+
+def get_docs_path(file_path):
+    return os.path.join(get_root_path(), "docs", file_path)
+
+def should_reload_toolshelf(toolshelf_name: str):
+    for handle_name in toolshelf_config.reload_toolshelf:
+        handle = find_handle(handle_name)
+        if handle:
+            return True
+    return False
+toolshelf_config = ToolShelfConfig()
